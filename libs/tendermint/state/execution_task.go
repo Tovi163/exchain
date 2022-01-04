@@ -74,11 +74,14 @@ func (t *executionTask) run() {
 		t.proxyApp.SetOptionSync(abci.RequestSetOption{Key: "ResetDeliverState",})
 	}
 
-	abciResponses, err := execBlockOnProxyApp(t)
+	abciResponses,wg, err := execBlockOnProxyApp(t)
 
 	if !t.stopped {
 		t.result = &executionResult{
 			abciResponses, err,
+		}
+		if nil==err{
+			wg.Wait()
 		}
 		trace.GetElapsedInfo().AddInfo(trace.Prerun, trc.Format())
 	}

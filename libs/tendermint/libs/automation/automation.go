@@ -1,6 +1,7 @@
 package automation
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/okex/exchain/libs/tendermint/libs/log"
@@ -30,25 +31,29 @@ func init() {
 
 type round struct {
 	Round           int64
-	PreVote         map[string]bool // true vote nil, false default vote
-	PreCommit       map[string]bool // true vote nil, false default vote
-	PrevotesMaj23   map[string]bool // true not received +2/3 prevotes, false actual received
-	PrecommitsMaj23 map[string]bool // true not received +2/3 precommits, false actual received
-	PreRun          map[string]int  // int => control prerun sleep time
-	AddBlockPart    map[string]int  // int => control sleep time before receiver a block
-	RecvBlock       map[string]bool // true not received proposed block, false actual received
-	Disconnect      map[string]int  // int => control consensus reactor sleep time
+	PreVote         map[string]bool   // true vote nil, false default vote
+	PreCommit       map[string]bool   // true vote nil, false default vote
+	PrevotesMaj23   map[string]bool   // true not received +2/3 prevotes, false actual received
+	PrecommitsMaj23 map[string]bool   // true not received +2/3 precommits, false actual received
+	PreRun          map[string]int    // int => control prerun sleep time
+	AddBlockPart    map[string]int    // int => control sleep time before receiver a block
+	RecvBlock       map[string]bool   // true not received proposed block, false actual received
+	Disconnect      map[string]int    // int => control consensus reactor sleep time
+	BlockData       string            // data
+	TxExecuteSleep  int
 }
 
 type action struct {
-	preVote          bool // true vote nil, false default vote
-	preCommit        bool // true vote nil, false default vote
-	prevotesMaj23    bool // true not received +2/3 prevotes, false actual received
-	precommitsMaj23  bool // true not received +2/3 precommits, false actual received
-	preRunWait       int  // control prerun sleep time
-	addBlockPartWait int  // control sleep time before receiver a block
-	recvBlock        bool // true not received proposed block, false actual received
-	disconnect       int  // int => control consensus reactor sleep time
+	preVote          bool   // true vote nil, false default vote
+	preCommit        bool   // true vote nil, false default vote
+	prevotesMaj23    bool   // true not received +2/3 prevotes, false actual received
+	precommitsMaj23  bool   // true not received +2/3 precommits, false actual received
+	preRunWait       int    // control prerun sleep time
+	addBlockPartWait int    // control sleep time before receiver a block
+	recvBlock        bool   // true not received proposed block, false actual received
+	disconnect       int    // int => control consensus reactor sleep time
+	blockData     string 	// string => blockData
+	txExecuteSleep int 		// int =>
 }
 
 func LoadTestCase(log log.Logger) {
@@ -86,6 +91,8 @@ func LoadTestCase(log log.Logger) {
 				act.addBlockPartWait = event.AddBlockPart[role]
 				act.recvBlock = event.RecvBlock[role]
 				act.disconnect = event.Disconnect[role]
+				act.blockData = event.BlockData
+				act.txExecuteSleep=event.TxExecuteSleep
 
 				roleAction[fmt.Sprintf("%s-%d", height, event.Round)] = act
 			}
@@ -193,6 +200,32 @@ func NetworkDisconnect(height int64, round int) bool {
 		}
 	}
 	return false
+}
+
+func BlockNotify(height int64, round int) []byte {
+	if !enableRoleTest {
+		return nil
+	}
+	if act, ok := roleAction[actionKey(height, round)]; ok {
+		if len(act.blockData) > 0 {
+			ret, _ := hex.DecodeString(act.blockData)
+			return ret
+		}
+	}
+
+	return nil
+}
+
+func PrerunTxSleep(height int64)  {
+	if !enableRoleTest {
+		return
+	}
+	if act, ok := roleAction[actionKey(height,0)]; ok {
+		if act.txExecuteSleep>0{
+			sleepTimer := SleepTimerInstance()
+			 sleepTimer.doSleep(act.txExecuteSleep)
+		}
+	}
 }
 
 func actionKey(height int64, round int) string {

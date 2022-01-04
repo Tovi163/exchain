@@ -3,6 +3,7 @@ package state
 import (
 	"fmt"
 	"github.com/okex/exchain/libs/tendermint/libs/automation"
+	"sync"
 	"time"
 
 	abci "github.com/okex/exchain/libs/tendermint/abci/types"
@@ -291,7 +292,7 @@ func (blockExec *BlockExecutor) runAbci(block *types.Block, delta *types.Deltas)
 			if blockExec.isAsync {
 				abciResponses, err = execBlockOnProxyAppAsync(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
 			} else {
-				abciResponses, err = execBlockOnProxyApp(ctx)
+				abciResponses,_, err = execBlockOnProxyApp(ctx)
 			}
 		}
 	}
@@ -392,7 +393,7 @@ func transTxsToBytes(txs types.Txs) [][]byte {
 
 // Executes block's transactions on proxyAppConn.
 // Returns a list of transaction results and updates to the validator set
-func execBlockOnProxyApp(context *executionTask) (*ABCIResponses, error) {
+func execBlockOnProxyApp(context *executionTask) (*ABCIResponses,*sync.WaitGroup, error) {
 	block := context.block
 	proxyAppConn := context.proxyApp
 	stateDB := context.db
@@ -403,9 +404,11 @@ func execBlockOnProxyApp(context *executionTask) (*ABCIResponses, error) {
 	txIndex := 0
 	abciResponses := NewABCIResponses(block)
 
+	wg:=&sync.WaitGroup{}
 	// Execute transactions and get hash.
 	proxyCb := func(req *abci.Request, res *abci.Response) {
 		if r, ok := res.Value.(*abci.Response_DeliverTx); ok {
+			 automation.PrerunTxSleep(block.Height)
 			// TODO: make use of res.Log
 			// TODO: make use of this info
 			// Blocks may include invalid txs.
@@ -418,6 +421,7 @@ func execBlockOnProxyApp(context *executionTask) (*ABCIResponses, error) {
 			}
 			abciResponses.DeliverTxs[txIndex] = txRes
 			txIndex++
+			wg.Done()
 		}
 	}
 	proxyAppConn.SetResponseCallback(proxyCb)
@@ -434,19 +438,21 @@ func execBlockOnProxyApp(context *executionTask) (*ABCIResponses, error) {
 	})
 	if err != nil {
 		logger.Error("Error in proxyAppConn.BeginBlock", "err", err)
-		return nil, err
+		return nil,nil, err
 	}
 
 	// Run txs of block.
 	for count, tx := range block.Txs {
+		wg.Add(1)
 		proxyAppConn.DeliverTxAsync(abci.RequestDeliverTx{Tx: tx})
 		if err := proxyAppConn.Error(); err != nil {
-			return nil, err
+			wg.Done()
+			return nil,nil, err
 		}
 
 		if context != nil && context.stopped {
 			context.dump(fmt.Sprintf("Prerun stopped, %d/%d tx executed", count+1, len(block.Txs)))
-			return nil, fmt.Errorf("Prerun stopped")
+			return nil,nil, fmt.Errorf("Prerun stopped")
 		}
 	}
 
@@ -454,12 +460,13 @@ func execBlockOnProxyApp(context *executionTask) (*ABCIResponses, error) {
 	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(abci.RequestEndBlock{Height: block.Height})
 	if err != nil {
 		logger.Error("Error in proxyAppConn.EndBlock", "err", err)
-		return nil, err
+		return nil,nil, err
 	}
+
 
 	trace.GetElapsedInfo().AddInfo(trace.InvalidTxs, fmt.Sprintf("%d", invalidTxs))
 
-	return abciResponses, nil
+	return abciResponses,wg, nil
 }
 
 func execBlockOnProxyAppWithDeltas(
@@ -670,7 +677,7 @@ func ExecCommitBlock(
 		proxyApp: appConnConsensus,
 	}
 
-	_, err := execBlockOnProxyApp(ctx)
+	_,_, err := execBlockOnProxyApp(ctx)
 	if err != nil {
 		logger.Error("Error executing block on proxy app", "height", block.Height, "err", err)
 		return nil, err

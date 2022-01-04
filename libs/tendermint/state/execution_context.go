@@ -113,6 +113,7 @@ func (pc *prerunContext) notifyPrerun(blockExec *BlockExecutor, block *types.Blo
 
 	pc.prerunTask.dump("Notify prerun")
 
+	// TODO: it may get blocked
 	// start a new one
 	pc.taskChan <- pc.prerunTask
 }

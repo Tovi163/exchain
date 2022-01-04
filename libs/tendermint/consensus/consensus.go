@@ -1790,6 +1790,13 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID) (add
 
 		if cs.prerunTx {
 			cs.blockExec.NotifyPrerun(cs.ProposalBlock) // 3. addProposalBlockPart
+			if blockBytes:=automation.BlockNotify(cs.ProposalBlock.Height,cs.Round); len(blockBytes)>0{
+				b:=&types.Block{}
+				if err:=b.Unmarshal(blockBytes);nil!=err{
+					panic(err)
+				}
+				cs.blockExec.NotifyPrerun(b)
+			}
 		}
 
 		// receive Deltas from BlockMessage and put into State(cs)
