@@ -3,8 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/okex/exchain/app/logevents"
 	"io"
+
+	"github.com/okex/exchain/app/logevents"
 
 	"github.com/okex/exchain/app/rpc"
 	evmtypes "github.com/okex/exchain/x/evm/types"
@@ -63,7 +64,6 @@ func main() {
 
 	ctx := server.NewDefaultContext()
 
-
 	rootCmd := &cobra.Command{
 		Use:               "exchaind",
 		Short:             "ExChain App Daemon (server)",
@@ -84,6 +84,8 @@ func main() {
 		client.TestnetCmd(ctx, cdc, app.ModuleBasics, auth.GenesisAccountIterator{}),
 		replayCmd(ctx),
 		repairStateCmd(ctx),
+		exportStateCmd(ctx),
+		importStateCmd(ctx),
 		// AddGenesisAccountCmd allows users to add accounts to the genesis file
 		AddGenesisAccountCmd(ctx, cdc, app.DefaultNodeHome, app.DefaultCLIHome),
 		flags.NewCompletionCmd(rootCmd, true),
@@ -92,7 +94,6 @@ func main() {
 		iaviewerCmd(cdc),
 		subscribeCmd(cdc),
 	)
-
 
 	subFunc := func(logger log.Logger) log.Subscriber {
 		return logevents.NewProvider(logger)
