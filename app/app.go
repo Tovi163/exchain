@@ -198,7 +198,7 @@ func NewOKExChainApp(
 		"GenesisHeight", tmtypes.GetStartBlockHeight(),
 		"MercuryHeight", tmtypes.GetMercuryHeight(),
 		"VenusHeight", tmtypes.GetVenusHeight(),
-		)
+	)
 	onceLog.Do(func() {
 		iavllog := logger.With("module", "iavl")
 		logFunc := func(level int, format string, args ...interface{}) {
@@ -503,7 +503,6 @@ func (app *OKExChainApp) EndBlocker(ctx sdk.Context, req abci.RequestEndBlock) a
 	return app.mm.EndBlock(ctx, req)
 }
 
-
 // InitChainer updates at chain initialization
 func (app *OKExChainApp) InitChainer(ctx sdk.Context, req abci.RequestInitChain) abci.ResponseInitChain {
 
@@ -584,10 +583,6 @@ func validateMsgHook(orderKeeper order.Keeper) ante.ValidateMsgHandler {
 				}
 				err = order.ValidateMsgCancelOrders(newCtx, orderKeeper, assertedMsg)
 			case evmtypes.MsgEthereumTx:
-				if len(msgs) > 1 {
-					return wrongMsgErr
-				}
-			case evmtypes.MsgEthermint:
 				if len(msgs) > 1 {
 					return wrongMsgErr
 				}

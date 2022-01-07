@@ -15,6 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
+	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -895,31 +896,22 @@ func (api *PublicEthereumAPI) doCall(
 	}
 
 	// Set destination address for call
-	var toAddr *sdk.AccAddress
+	var toAddr *ethcmn.Address
 	if args.To != nil {
-		pTemp := sdk.AccAddress(args.To.Bytes())
+		pTemp := ethcmn.BytesToAddress(args.To.Bytes())
 		toAddr = &pTemp
 	}
 
 	var msgs []sdk.Msg
 	// Create new call message
-	msg := evmtypes.NewMsgEthermint(nonce, toAddr, sdk.NewIntFromBigInt(value), gas,
-		sdk.NewIntFromBigInt(gasPrice), data, sdk.AccAddress(addr.Bytes()))
+	msg := evmtypes.NewMsgEthereumTx(nonce, toAddr, value, gas,
+		gasPrice, data)
 	msgs = append(msgs, msg)
 
 	sim := api.evmFactory.BuildSimulator(api)
 	//only worked when fast-query has been enabled
 	if sim != nil {
 		return sim.DoCall(msg)
-	}
-
-	//convert the pending transactions into ethermint msgs
-	if blockNum == rpctypes.PendingBlockNumber {
-		pendingMsgs, err := api.pendingMsgs()
-		if err != nil {
-			return nil, err
-		}
-		msgs = append(msgs, pendingMsgs...)
 	}
 
 	//Generate tx to be used to simulate (signature isn't needed)
@@ -1589,8 +1581,7 @@ func (api *PublicEthereumAPI) pendingMsgs() ([]sdk.Msg, error) {
 		// NOTE: we have to construct the EVM transaction instead of just casting from the tendermint
 		// transactions because PendingTransactions only checks for MsgEthereumTx messages.
 
-		pendingTo := sdk.AccAddress(pendingTx.To.Bytes())
-		pendingFrom := sdk.AccAddress(pendingTx.From.Bytes())
+		pendingTo := ethcmn.BytesToAddress(pendingTx.To.Bytes())
 		pendingGas, err := hexutil.DecodeUint64(pendingTx.Gas.String())
 		if err != nil {
 			return nil, err
@@ -1605,8 +1596,8 @@ func (api *PublicEthereumAPI) pendingMsgs() ([]sdk.Msg, error) {
 		pendingData := pendingTx.Input
 		nonce, _ := api.accountNonce(api.clientCtx, pendingTx.From, true)
 
-		msg := evmtypes.NewMsgEthermint(nonce, &pendingTo, sdk.NewIntFromBigInt(pendingValue), pendingGas,
-			sdk.NewIntFromBigInt(pendingGasPrice), pendingData, pendingFrom)
+		msg := evmtypes.NewMsgEthereumTx(nonce, &pendingTo, pendingValue, pendingGas,
+			pendingGasPrice, pendingData)
 
 		msgs = append(msgs, msg)
 	}
