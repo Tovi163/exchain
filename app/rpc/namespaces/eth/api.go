@@ -902,29 +902,22 @@ func (api *PublicEthereumAPI) doCall(
 		toAddr = &pTemp
 	}
 
-	var msgs []sdk.Msg
 	// Create new call message
-	msg := evmtypes.NewMsgEthereumTx(nonce, toAddr, value, gas,
+	tx := evmtypes.NewMsgEthereumTx(nonce, toAddr, value, gas,
 		gasPrice, data)
-	msgs = append(msgs, msg)
 
 	sim := api.evmFactory.BuildSimulator(api)
 	//only worked when fast-query has been enabled
 	if sim != nil {
-		return sim.DoCall(msg)
+		return sim.DoCall(tx)
 	}
 
-	//Generate tx to be used to simulate (signature isn't needed)
-	var stdSig authtypes.StdSignature
-	stdSigs := []authtypes.StdSignature{stdSig}
-
-	tx := authtypes.NewStdTx(msgs, authtypes.StdFee{}, stdSigs, "")
 	if err := tx.ValidateBasic(); err != nil {
 		return nil, err
 	}
 
 	txEncoder := authclient.GetTxEncoder(clientCtx.Codec, authclient.WithEthereumTx())
-	txBytes, err := txEncoder(tx)
+	txBytes, err := txEncoder(&tx)
 	if err != nil {
 		return nil, err
 	}
