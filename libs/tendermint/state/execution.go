@@ -661,7 +661,7 @@ func ExecCommitBlock(
 	block *types.Block,
 	logger log.Logger,
 	stateDB dbm.DB,
-) ([]byte, error) {
+) (*abci.Deltas, []byte, error) {
 
 	ctx := &executionTask{
 		logger: logger,
@@ -673,15 +673,15 @@ func ExecCommitBlock(
 	_, err := execBlockOnProxyApp(ctx)
 	if err != nil {
 		logger.Error("Error executing block on proxy app", "height", block.Height, "err", err)
-		return nil, err
+		return nil, nil, err
 	}
 	// Commit block, get hash back
 	res, err := appConnConsensus.CommitSync(abci.RequestCommit{})
 	if err != nil {
 		logger.Error("Client error during proxyAppConn.CommitSync", "err", res)
-		return nil, err
+		return nil, nil, err
 	}
 	// ResponseCommit has no error or log, just data
-	return res.Data, nil
+	return res.Deltas, res.Data, nil
 }
 
