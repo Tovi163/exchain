@@ -1,4 +1,4 @@
-package state_test
+package state
 
 import (
 	"fmt"
@@ -11,9 +11,8 @@ import (
 	"github.com/okex/exchain/libs/tendermint/libs/log"
 	"github.com/okex/exchain/libs/tendermint/mempool"
 	"github.com/okex/exchain/libs/tendermint/proxy"
-	sm "github.com/okex/exchain/libs/tendermint/state"
 	"github.com/okex/exchain/libs/tendermint/types"
-	tmtime "github.com/okex/exchain/libs/tendermint/types/time"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 	"math/big"
@@ -134,7 +133,7 @@ func registerTestCodec(cdc *codec.Codec) {
 
 // amino decode
 func testTxDecoder(cdc *codec.Codec) sdk.TxDecoder {
-	return func(txBytes []byte) (sdk.Tx, error) {
+	return func(txBytes []byte, _ ...int64) (sdk.Tx, error) {
 		var tx txTest
 		if len(txBytes) == 0 {
 			return nil, sdkerrors.Wrap(sdkerrors.ErrTxDecode, "tx bytes are empty")
@@ -201,8 +200,10 @@ func setupSimulateBaseApp(t *testing.T) *baseapp.BaseApp {
 func TestDelta(t *testing.T) {
 	iavl.SetProduceDelta(true)
 	types.UploadDelta = true
+	viper.Set("fast-query", true)
 
 	app := setupSimulateBaseApp(t)
+
 	// Create same codec used in txDecoder
 	cdc := codec.New()
 	registerTestCodec(cdc)
@@ -225,6 +226,8 @@ func TestDelta(t *testing.T) {
 	app.EndBlock(abci.RequestEndBlock{})
 
 	res := app.Commit(abci.RequestCommit{})
+	wd, _ := getWatchDataFunc()
+	fmt.Println(wd)
 	fmt.Println(res.Deltas)
 }
 
@@ -236,50 +239,16 @@ func TestExec(t *testing.T) {
 	require.Nil(t, err)
 	defer proxyApp.Stop()
 
-	state, stateDB, _ := makeState(2, 12)
-
-	prevHash := state.LastBlockID.Hash
-	prevParts := types.PartSetHeader{}
-	prevBlockID := types.BlockID{Hash: prevHash, PartsHeader: prevParts}
-
 //	height1, idx1, val1 := int64(8), 0, state.Validators.Validators[0].Address
 //	height2, idx2, val2 := int64(3), 1, state.Validators.Validators[1].Address
 //	ev1 := types.NewMockEvidence(height1, time.Now(), idx1, val1)
 //	ev2 := types.NewMockEvidence(height2, time.Now(), idx2, val2)
 
-	now := tmtime.Now()
-//	valSet := state.Validators
-	testCases := []struct {
-		desc                        string
-		evidence                    []types.Evidence
-		expectedByzantineValidators []abci.Evidence
-	}{
-		{"none byzantine", []types.Evidence{}, []abci.Evidence{}},
-//		{"one byzantine", []types.Evidence{ev1}, []abci.Evidence{types.TM2PB.Evidence(ev1, valSet, now)}},
-//		{"multiple byzantine", []types.Evidence{ev1, ev2}, []abci.Evidence{
-//			types.TM2PB.Evidence(ev1, valSet, now),
-//			types.TM2PB.Evidence(ev2, valSet, now)}},
-	}
+	blocks, stateDB := produceBlock()
 
-	var (
-		commitSig0 = types.NewCommitSigForBlock(
-			[]byte("Signature1"),
-			state.Validators.Validators[0].Address,
-			now)
-		commitSig1 = types.NewCommitSigForBlock(
-			[]byte("Signature2"),
-			state.Validators.Validators[1].Address,
-			now)
-	)
-	commitSigs := []types.CommitSig{commitSig0, commitSig1}
-	lastCommit := types.NewCommit(9, 0, prevBlockID, commitSigs)
-	for _, tc := range testCases {
-
-		block, _ := state.MakeBlock(1, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
-		block.Time = now
-		block.Evidence.Evidence = tc.evidence
-		deltas, _, err := sm.ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), stateDB)
-		require.Nil(t, err, tc.desc)
+	for _, block := range blocks {
+		deltas, _, err := execCommitBlockDelta(proxyApp.Consensus(), block, log.TestingLogger(), stateDB)
+		require.Nil(t, err)
 		fmt.Println("delta:", deltas)
 	}
 }
