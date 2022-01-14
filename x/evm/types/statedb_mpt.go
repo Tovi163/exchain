@@ -10,8 +10,8 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/trie"
 	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
-	tmtypes "github.com/okex/exchain/libs/tendermint/types"
 	"github.com/okex/exchain/libs/tendermint/libs/log"
+	tmtypes "github.com/okex/exchain/libs/tendermint/types"
 )
 
 func (csdb *CommitStateDB) CommitMpt(deleteEmptyObjects bool) (ethcmn.Hash, error) {
@@ -82,6 +82,7 @@ func (csdb *CommitStateDB) UpdateAccountStorageInfo(so *stateObject) {
 	if err != nil {
 		csdb.SetError(fmt.Errorf("encode state root (%x) error: %v", so.stateRoot.String(), err))
 	}
+	fmt.Println("addr", so.address.String(), so.stateRoot.String())
 	if err := csdb.trie.TryUpdate(addr[:], data); err != nil {
 		csdb.SetError(fmt.Errorf("updateStateObject (%x) error: %v", addr[:], err))
 	}
