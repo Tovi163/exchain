@@ -199,7 +199,7 @@ func NewOKExChainApp(
 		"MercuryHeight", tmtypes.GetMercuryHeight(),
 		"VenusHeight", tmtypes.GetVenusHeight(),
 		"MarsHeight", tmtypes.GetMarsHeight(),
-		)
+	)
 	onceLog.Do(func() {
 		iavllog := logger.With("module", "iavl")
 		logFunc := func(level int, format string, args ...interface{}) {
@@ -506,7 +506,6 @@ func (app *OKExChainApp) EndBlocker(ctx sdk.Context, req abci.RequestEndBlock) a
 	return app.mm.EndBlock(ctx, req)
 }
 
-
 // InitChainer updates at chain initialization
 func (app *OKExChainApp) InitChainer(ctx sdk.Context, req abci.RequestInitChain) abci.ResponseInitChain {
 
@@ -649,7 +648,7 @@ func NewEvmModuleStopLogic(ak *evm.Keeper) sdk.CustomizeOnStop {
 func NewMptCommitHandler(ak *evm.Keeper) sdk.MptCommitHandler {
 	return func(ctx sdk.Context) {
 		if tmtypes.HigherThanMars(ctx.BlockHeight()) {
-			ak.PushData2Database(ctx)
+			go ak.PushData2Database(ctx)
 		}
 	}
 }
