@@ -82,7 +82,6 @@ func (csdb *CommitStateDB) UpdateAccountStorageInfo(so *stateObject) {
 	if err != nil {
 		csdb.SetError(fmt.Errorf("encode state root (%x) error: %v", so.stateRoot.String(), err))
 	}
-	fmt.Println("addr", so.address.String(), so.stateRoot.String())
 	if err := csdb.trie.TryUpdate(addr[:], data); err != nil {
 		csdb.SetError(fmt.Errorf("updateStateObject (%x) error: %v", addr[:], err))
 	}
