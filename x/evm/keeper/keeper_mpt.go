@@ -16,7 +16,7 @@ var (
 	KeyPrefixLatestStoredHeight = []byte{0x02}
 )
 
-const TriesInMemory = 100
+const TriesInMemory = 64
 
 // GetMptRootHash gets root mpt hash from block height
 func (k *Keeper) GetMptRootHash(height uint64) ethcmn.Hash {
