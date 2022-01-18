@@ -1,6 +1,7 @@
 package state
 
 import (
+	"encoding/hex"
 	"fmt"
 	abci "github.com/okex/exchain/libs/tendermint/abci/types"
 	"github.com/okex/exchain/libs/tendermint/libs/automation"
@@ -27,13 +28,11 @@ type executionTask struct {
 	proxyApp       proxy.AppConnConsensus
 	db             dbm.DB
 	logger         log.Logger
-	eventBus       types.BlockEventPublisher
-	notifyC        chan struct{}
+	blockHash      string
 }
 
 func newExecutionTask(blockExec *BlockExecutor, block *types.Block, index int64) *executionTask {
-
-	return &executionTask{
+	ret:=&executionTask{
 		height:         block.Height,
 		block:          block,
 		db:             blockExec.db,
@@ -41,9 +40,10 @@ func newExecutionTask(blockExec *BlockExecutor, block *types.Block, index int64)
 		logger:         blockExec.logger,
 		taskResultChan: blockExec.prerunCtx.taskResultChan,
 		index:          index,
-		eventBus:       blockExec.eventBus,
-		notifyC: make(chan struct{}),
 	}
+	ret.blockHash=hex.EncodeToString(block.Hash())
+
+	return ret
 }
 
 func (e *executionTask) dump(when string) {
@@ -52,7 +52,7 @@ func (e *executionTask) dump(when string) {
 		"stopped", e.stopped,
 		"Height", e.block.Height,
 		"index", e.index,
-		"blockHash", e.block.Hash(),
+		"blockHash", e.blockHash,
 		//"AppHash", e.block.AppHash,
 	)
 }
@@ -72,11 +72,6 @@ func (t *executionTask) stop() {
 		t.proxyApp.SetOptionSync(abci.RequestSetOption{Key: "ResetDeliverState"})
 	}
 
-}
-
-// wait until current  task is quit
-func(t *executionTask)waitUntilTaskFinishedOrCanceled(){
-	<-t.notifyC
 }
 
 func (t *executionTask) run() {
