@@ -165,7 +165,7 @@ func (k *Keeper) PushData2Database(ctx sdk.Context) {
 		// Garbage collect anything below our required write retention
 		for !k.triegc.Empty() {
 			root, number := k.triegc.Pop()
-			if int64(-number) > chosen {
+			if -number > chosen {
 				k.triegc.Push(root, number)
 				break
 			}
