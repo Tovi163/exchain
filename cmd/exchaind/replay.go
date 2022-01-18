@@ -7,18 +7,19 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"path/filepath"
+	"runtime"
 	"runtime/pprof"
 	"time"
-
-	"github.com/okex/exchain/libs/system"
 
 	"github.com/okex/exchain/app/config"
 	"github.com/okex/exchain/libs/cosmos-sdk/baseapp"
 	"github.com/okex/exchain/libs/cosmos-sdk/server"
+	"github.com/okex/exchain/libs/cosmos-sdk/store/flatkv"
 	"github.com/okex/exchain/libs/cosmos-sdk/store/iavl"
 	storetypes "github.com/okex/exchain/libs/cosmos-sdk/store/types"
 	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
 	tmiavl "github.com/okex/exchain/libs/iavl"
+	"github.com/okex/exchain/libs/system"
 	abci "github.com/okex/exchain/libs/tendermint/abci/types"
 	"github.com/okex/exchain/libs/tendermint/mock"
 	"github.com/okex/exchain/libs/tendermint/node"
@@ -38,8 +39,9 @@ const (
 	blockStoreDB     = "blockstore"
 	stateDB          = "state"
 
-	pprofAddrFlag    = "pprof_addr"
-	runWithPprofFlag = "gen_pprof"
+	pprofAddrFlag       = "pprof_addr"
+	runWithPprofFlag    = "gen_pprof"
+	runWithPprofMemFlag = "gen_pprof_mem"
 
 	saveBlock = "save_block"
 
@@ -65,6 +67,17 @@ func replayCmd(ctx *server.Context) *cobra.Command {
 			replayBlock(ctx, dataDir)
 			log.Println("--------- replay success ---------")
 		},
+		PostRun: func(cmd *cobra.Command, args []string) {
+			if viper.GetBool(runWithPprofMemFlag) {
+				log.Println("--------- gen pprof mem start ---------")
+				err := dumpMemPprof()
+				if err != nil {
+					log.Println(err)
+				} else {
+					log.Println("--------- gen pprof mem success ---------")
+				}
+			}
+		},
 	}
 	cmd.Flags().StringP(replayedBlockDir, "d", ".exchaind/data", "Directory of block data to be replayed")
 	cmd.Flags().StringP(pprofAddrFlag, "p", "0.0.0.0:26661", "Address and port of pprof HTTP server listening")
@@ -74,6 +87,7 @@ func replayCmd(ctx *server.Context) *cobra.Command {
 	cmd.Flags().String(types.FlagRedisUrl, "localhost:6379", "redis url")
 	cmd.Flags().String(types.FlagRedisAuth, "", "redis auth")
 	cmd.Flags().Int(types.FlagRedisExpire, 300, "delta expiration time. unit is second")
+	cmd.Flags().Int(types.FlagRedisDB, 0, "delta db num")
 
 	cmd.Flags().String(server.FlagPruning, storetypes.PruningOptionNothing, "Pruning strategy (default|nothing|everything|custom)")
 	cmd.Flags().Uint64(server.FlagHaltHeight, 0, "Block height at which to gracefully halt the chain and shutdown the node")
@@ -97,12 +111,14 @@ func replayCmd(ctx *server.Context) *cobra.Command {
 	cmd.Flags().BoolVar(&tmiavl.EnableAsyncCommit, tmiavl.FlagIavlEnableAsyncCommit, false, "Enable cache iavl node data to optimization leveldb pruning process")
 	cmd.Flags().BoolVar(&system.EnableGid, system.FlagEnableGid, false, "Display goroutine id in log")
 	cmd.Flags().Bool(runWithPprofFlag, false, "Dump the pprof of the entire replay process")
+	cmd.Flags().Bool(runWithPprofMemFlag, false, "Dump the mem profile of the entire replay process")
 	cmd.Flags().Bool(sm.FlagParalleledTx, false, "pall Tx")
 	cmd.Flags().Bool(saveBlock, false, "save block when replay")
 	cmd.Flags().Int64(config.FlagMaxGasUsedPerBlock, -1, "Maximum gas used of transactions in a block")
 	cmd.Flags().Bool(sdk.FlagMultiCache, false, "Enable multi cache")
 	cmd.Flags().Int(sdk.MaxAccInMultiCache, 0, "max acc in multi cache")
 	cmd.Flags().Int(sdk.MaxStorageInMultiCache, 0, "max storage in multi cache")
+	cmd.Flags().Bool(flatkv.FlagEnable, false, "Enable flat kv storage for read performance")
 
 	return cmd
 }
@@ -290,6 +306,20 @@ func doReplay(ctx *server.Context, state sm.State, stateStoreDB dbm.DB,
 			SaveBlock(ctx, originBlockStore, height)
 		}
 	}
+}
+
+func dumpMemPprof() error {
+	fileName := fmt.Sprintf("replay_pprof_%s.mem.bin", time.Now().Format("20060102150405"))
+	f, err := os.Create(fileName)
+	if err != nil {
+		return fmt.Errorf("create mem pprof file %s error: %w", fileName, err)
+	}
+	defer f.Close()
+	runtime.GC() // get up-to-date statistics
+	if err = pprof.WriteHeapProfile(f); err != nil {
+		return fmt.Errorf("could not write memory profile: %w", err)
+	}
+	return nil
 }
 
 func startDumpPprof() {
