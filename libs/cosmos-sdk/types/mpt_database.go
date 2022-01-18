@@ -20,8 +20,8 @@ var (
 
 	initOnce sync.Once
 
-	TrieDirtyDisabled      = false
-	TrieCacheSize     uint = 2048 // MB
+	TrieDirtyDisabled      = false //TODO delete
+	TrieCacheSize     uint = 2048  // MB
 )
 
 func init() {
