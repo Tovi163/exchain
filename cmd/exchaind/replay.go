@@ -53,6 +53,9 @@ func replayCmd(ctx *server.Context) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "replay",
 		Short: "Replay blocks from local db",
+		PreRun: func(cmd *cobra.Command, args []string) {
+			runtime.SetMutexProfileFraction(1)
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			log.Println("--------- replay start ---------")
 			pprofAddress := viper.GetString(pprofAddrFlag)
@@ -76,6 +79,12 @@ func replayCmd(ctx *server.Context) *cobra.Command {
 				} else {
 					log.Println("--------- gen pprof mem success ---------")
 				}
+			}
+
+			f, err := os.Create("mutex.bin")
+			if err == nil {
+				pprof.Lookup("mutex").WriteTo(f, 0)
+				f.Close()
 			}
 		},
 	}
