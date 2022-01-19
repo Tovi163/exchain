@@ -129,47 +129,54 @@ func (k *Keeper) PushData2Database(ctx sdk.Context) {
 	// Full but not archive node, do proper garbage collection
 	triedb.Reference(curMptRoot, ethcmn.Hash{}) // metadata reference to keep trie alive
 	k.triegc.Push(curMptRoot, -curHeight)
-
-	if curHeight > TriesInMemory {
-		// If we exceeded our memory allowance, flush matured singleton nodes to disk
-		var (
-			nodes, imgs = triedb.Size()
-			limit       = ethcmn.StorageSize(256) * 1024 * 1024
-		)
-
-		if nodes > limit || imgs > 4*1024*1024 {
-			triedb.Cap(limit - ethdb.IdealBatchSize)
+	if sdk.TrieDirtyDisabled {
+		if err := triedb.Commit(curMptRoot, false, nil); err != nil {
+			panic("fail to commit mpt data: " + err.Error())
 		}
-		// Find the next state trie we need to commit
-		chosen := curHeight - TriesInMemory
+		k.SetLatestStoredBlockHeight(uint64(curHeight))
+		k.Logger(ctx).Info("sync push data to db", "block", curHeight, "trieHash", curMptRoot)
+	} else {
+		if curHeight > TriesInMemory {
+			// If we exceeded our memory allowance, flush matured singleton nodes to disk
+			var (
+				nodes, imgs = triedb.Size()
+				limit       = ethcmn.StorageSize(256) * 1024 * 1024
+			)
 
-		if chosen <= int64(k.startHeight) {
-			return
-		}
-
-		// If the header is missing (canonical chain behind), we're reorging a low
-		// diff sidechain. Suspend committing until this operation is completed.
-		chRoot := k.GetMptRootHash(uint64(chosen))
-		if chRoot == (ethcmn.Hash{}) {
-			k.Logger(ctx).Debug("Reorg in progress, trie commit postponed", "number", chosen)
-		} else {
-			// Flush an entire trie and restart the counters, it's not a thread safe process,
-			// cannot use a go thread to run, or it will lead 'fatal error: concurrent map read and map write' error
-			if err := triedb.Commit(chRoot, true, nil); err != nil {
-				panic("fail to commit mpt data: " + err.Error())
+			if nodes > limit || imgs > 4*1024*1024 {
+				triedb.Cap(limit - ethdb.IdealBatchSize)
 			}
-			k.SetLatestStoredBlockHeight(uint64(chosen))
-			k.Logger(ctx).Info("async push data to db", "block", chosen, "trieHash", chRoot)
-		}
+			// Find the next state trie we need to commit
+			chosen := curHeight - TriesInMemory
 
-		// Garbage collect anything below our required write retention
-		for !k.triegc.Empty() {
-			root, number := k.triegc.Pop()
-			if -number > chosen {
-				k.triegc.Push(root, number)
-				break
+			if chosen <= int64(k.startHeight) {
+				return
 			}
-			triedb.Dereference(root.(ethcmn.Hash))
+
+			// If the header is missing (canonical chain behind), we're reorging a low
+			// diff sidechain. Suspend committing until this operation is completed.
+			chRoot := k.GetMptRootHash(uint64(chosen))
+			if chRoot == (ethcmn.Hash{}) {
+				k.Logger(ctx).Debug("Reorg in progress, trie commit postponed", "number", chosen)
+			} else {
+				// Flush an entire trie and restart the counters, it's not a thread safe process,
+				// cannot use a go thread to run, or it will lead 'fatal error: concurrent map read and map write' error
+				if err := triedb.Commit(chRoot, true, nil); err != nil {
+					panic("fail to commit mpt data: " + err.Error())
+				}
+				k.SetLatestStoredBlockHeight(uint64(chosen))
+				k.Logger(ctx).Info("async push data to db", "block", chosen, "trieHash", chRoot)
+			}
+
+			// Garbage collect anything below our required write retention
+			for !k.triegc.Empty() {
+				root, number := k.triegc.Pop()
+				if -number > chosen {
+					k.triegc.Push(root, number)
+					break
+				}
+				triedb.Dereference(root.(ethcmn.Hash))
+			}
 		}
 	}
 
