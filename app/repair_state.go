@@ -44,11 +44,12 @@ func (app *repairApp) getLatestVersion() int64 {
 }
 
 func repairStateOnStart(ctx *server.Context) {
-	fmt.Println("repair-state-on-start")
+	fmt.Println("repair-state-on-start:begin")
 	orgIgnoreSmbCheck := sm.IgnoreSmbCheck
 	orgIgnoreVersionCheck := iavl.GetIgnoreVersionCheck()
 	iavl.EnableAsyncCommit = false
 	RepairState(ctx, true)
+	fmt.Println("repair-state-on-start:end")
 	//set original config
 	sm.SetIgnoreSmbCheck(orgIgnoreSmbCheck)
 	iavl.SetIgnoreVersionCheck(orgIgnoreVersionCheck)
