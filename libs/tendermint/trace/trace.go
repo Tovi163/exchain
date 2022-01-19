@@ -19,10 +19,9 @@ const (
 	Round       = "Round"
 	Evm         = "Evm"
 	Iavl        = "Iavl"
-	FlatKV      = "FlatKV"
 	DeliverTxs  = "DeliverTxs"
 
-	Delta = "Delta"
+	Delta  = "Delta"
 
 	Abci       = "abci"
 	InvalidTxs = "InvalidTxs"
@@ -58,6 +57,7 @@ func GetElapsedInfo() IElapsedTimeInfos {
 	return elapsedInfo
 }
 
+
 type Tracer struct {
 	name             string
 	startTime        int64
@@ -68,10 +68,11 @@ type Tracer struct {
 	elapsedTime      int64
 }
 
+
 func NewTracer(name string) *Tracer {
 	t := &Tracer{
 		startTime: time.Now().UnixNano(),
-		name:      name,
+		name: name,
 	}
 	return t
 }

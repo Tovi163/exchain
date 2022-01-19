@@ -16,17 +16,12 @@ set -m
 set -x # activate debugging
 
 source oec.profile
-WRAPPEDTX=false
 PRERUN=false
-while getopts "isn:b:p:c:Smxwk:" opt; do
+while getopts "isn:b:p:c:Smxk:" opt; do
   case $opt in
   i)
     echo "OKCHAIN_INIT"
     OKCHAIN_INIT=1
-    ;;
-  w)
-    echo "WRAPPEDTX=$OPTARG"
-    WRAPPEDTX=true
     ;;
   x)
     echo "PRERUN=$OPTARG"
@@ -87,7 +82,7 @@ killbyname() {
 init() {
   killbyname ${BIN_NAME}
 
-  (cd ${OKCHAIN_TOP} && make install VenusHeight=1)
+  (cd ${OKCHAIN_TOP} && make install)
 
   rm -rf cache
 
@@ -127,14 +122,12 @@ run() {
   exchaind add-genesis-account 0x83D83497431C2D3FEab296a9fba4e5FaDD2f7eD0 900000000okt --home cache/node${index}/exchaind
   exchaind add-genesis-account 0x2Bd4AF0C1D0c2930fEE852D07bB9dE87D8C07044 900000000okt --home cache/node${index}/exchaind
 
-  LOG_LEVEL=main:debug,*:error,consensus:error,state:info,ante:info,txdecoder:info
+  LOG_LEVEL=main:info,*:error,consensus:error,state:info,provider:info
 
   echorun nohup exchaind start \
     --home cache/node${index}/exchaind \
     --p2p.seed_mode=$seed_mode \
     --p2p.allow_duplicate_ip \
-    --enable-dynamic-gp=false \
-    --enable-wtx=${WRAPPEDTX} \
     --p2p.pex=false \
     --p2p.addr_book_strict=false \
     $p2p_seed_opt $p2p_seed_arg \

@@ -163,9 +163,9 @@ func TestTxDecoder(t *testing.T) {
 		_, err = TxDecoder(cdc)(rlpBytes)
 		require.Equal(t, c.enableRLPDecoder, err == nil)
 	}
-	// more heights parameter allowed.
+	// only one height parameter is allowed.
 	tx, err = TxDecoder(cdc)(txbytes, 0, 999)
-	require.Nil(t, err)
+	require.NotNil(t, err)
 
 }
 

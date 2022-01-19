@@ -1,9 +1,10 @@
 package transient
 
 import (
-	"github.com/okex/exchain/libs/cosmos-sdk/store/types"
 	"github.com/okex/exchain/libs/iavl"
 	dbm "github.com/tendermint/tm-db"
+
+	"github.com/okex/exchain/libs/cosmos-sdk/store/types"
 
 	"github.com/okex/exchain/libs/cosmos-sdk/store/dbadapter"
 )
@@ -58,20 +59,4 @@ func (ts *Store) GetNodeReadCount() int {
 }
 
 func (ts *Store) ResetCount() {
-}
-
-func (ts *Store) GetFlatKVReadTime() int {
-	return 0
-}
-
-func (ts *Store) GetFlatKVWriteTime() int {
-	return 0
-}
-
-func (ts *Store) GetFlatKVReadCount() int {
-	return 0
-}
-
-func (ts *Store) GetFlatKVWriteCount() int {
-	return 0
 }

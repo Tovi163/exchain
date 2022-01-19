@@ -278,7 +278,7 @@ func GetTxEncoder(cdc *codec.Codec, options ...Option) (encoder sdk.TxEncoder) {
 		}
 	}
 
-	return
+	return encoder
 }
 
 // simulateMsgs simulates the transaction and returns the simulation response and

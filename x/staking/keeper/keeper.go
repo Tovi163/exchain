@@ -1,11 +1,12 @@
 package keeper
 
 import (
+	"container/list"
 	"fmt"
 	"strings"
 
-	"github.com/okex/exchain/libs/tendermint/libs/log"
 	"github.com/okex/exchain/x/staking/exported"
+	"github.com/okex/exchain/libs/tendermint/libs/log"
 
 	"github.com/okex/exchain/libs/cosmos-sdk/codec"
 	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
@@ -13,16 +14,20 @@ import (
 	"github.com/okex/exchain/x/staking/types"
 )
 
+const aminoCacheSize = 500
+
 // Implements ValidatorSet interface
 var _ types.ValidatorSet = Keeper{}
 
 // Keeper is the keeper struct of the staking store
 type Keeper struct {
-	storeKey     sdk.StoreKey
-	cdc          *codec.Codec
-	supplyKeeper types.SupplyKeeper
-	hooks        types.StakingHooks
-	paramstore   params.Subspace
+	storeKey           sdk.StoreKey
+	cdc                *codec.Codec
+	supplyKeeper       types.SupplyKeeper
+	hooks              types.StakingHooks
+	paramstore         params.Subspace
+	validatorCache     map[string]cachedValidator
+	validatorCacheList *list.List
 }
 
 // NewKeeper creates a new staking Keeper instance
@@ -39,11 +44,13 @@ func NewKeeper(cdc *codec.Codec, key sdk.StoreKey, supplyKeeper types.SupplyKeep
 	}
 
 	return Keeper{
-		storeKey:     key,
-		cdc:          cdc,
-		supplyKeeper: supplyKeeper,
-		paramstore:   paramstore.WithKeyTable(ParamKeyTable()),
-		hooks:        nil,
+		storeKey:           key,
+		cdc:                cdc,
+		supplyKeeper:       supplyKeeper,
+		paramstore:         paramstore.WithKeyTable(ParamKeyTable()),
+		hooks:              nil,
+		validatorCache:     make(map[string]cachedValidator, aminoCacheSize),
+		validatorCacheList: list.New(),
 	}
 }
 
