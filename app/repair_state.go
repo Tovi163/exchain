@@ -56,7 +56,7 @@ func repairStateOnStart(ctx *server.Context) {
 	// load latest block height
 	dataDir := filepath.Join(ctx.Config.RootDir, "data")
 	rmLockByDir(dataDir)
-	panic("scf--")
+	//panic("scf--")
 }
 
 func RepairState(ctx *server.Context, onStart bool) {
