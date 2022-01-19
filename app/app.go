@@ -55,7 +55,6 @@ import (
 	"github.com/okex/exchain/x/staking"
 	"github.com/okex/exchain/x/stream"
 	"github.com/okex/exchain/x/token"
-	"github.com/spf13/viper"
 	dbm "github.com/tendermint/tm-db"
 )
 
@@ -630,9 +629,9 @@ func PreRun(ctx *server.Context) error {
 		return err
 	}
 	// repair state on start
-	if viper.GetBool(FlagEnableRepairState) {
-		repairStateOnStart(ctx)
-	}
+	//if viper.GetBool(FlagEnableRepairState) {
+	repairStateOnStart(ctx)
+	//}
 	return nil
 }
 

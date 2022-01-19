@@ -44,6 +44,7 @@ func (app *repairApp) getLatestVersion() int64 {
 }
 
 func repairStateOnStart(ctx *server.Context) {
+	fmt.Println("repair-state-on-start")
 	orgIgnoreSmbCheck := sm.IgnoreSmbCheck
 	orgIgnoreVersionCheck := iavl.GetIgnoreVersionCheck()
 	iavl.EnableAsyncCommit = false
@@ -55,6 +56,7 @@ func repairStateOnStart(ctx *server.Context) {
 	// load latest block height
 	dataDir := filepath.Join(ctx.Config.RootDir, "data")
 	rmLockByDir(dataDir)
+	panic("scf--")
 }
 
 func RepairState(ctx *server.Context, onStart bool) {
@@ -102,7 +104,7 @@ func RepairState(ctx *server.Context, onStart bool) {
 				latestVersion = lastMptVersion
 			}
 		}
-		startVersion = latestVersion
+		startVersion = latestVersion - 2
 	}
 	if startVersion <= 0 {
 		panic("height too low, please restart from height 0 with genesis file")
