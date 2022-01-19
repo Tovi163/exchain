@@ -128,6 +128,7 @@ func RepairState(ctx *server.Context, onStart bool) {
 func createRepairApp(ctx *server.Context) (proxy.AppConns, *repairApp, error) {
 	rootDir := ctx.Config.RootDir
 	dataDir := filepath.Join(rootDir, "data")
+	fmt.Println("createRepairApp-datadir", dataDir)
 	db, err := openDB(applicationDB, dataDir)
 	panicError(err)
 	repairApp := newRepairApp(ctx.Logger, db, nil)
