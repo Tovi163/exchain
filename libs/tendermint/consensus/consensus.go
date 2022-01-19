@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"github.com/okex/exchain/libs/tendermint/libs/automation"
 	"github.com/spf13/viper"
@@ -1157,7 +1158,6 @@ func (cs *State) enterPrevote(height int64, round int) {
 
 func (cs *State) defaultDoPrevote(height int64, round int) {
 	logger := cs.Logger.With("height", height, "round", round)
-
 	if automation.PrevoteNil(height, round) {
 		cs.signAddVote(types.PrevoteType, nil, types.PartSetHeader{})
 		return
@@ -1424,6 +1424,8 @@ func (cs *State) enterCommit(height int64, commitRound int) {
 			// We're getting the wrong block.
 			// Set up ProposalBlockParts and keep waiting.
 			cs.ProposalBlock = nil
+			cs.Logger.Info("enterCommit proposalBlockPart reset ,because of mismatch hash,",
+				"origin", hex.EncodeToString(cs.ProposalBlockParts.Hash()), "after", blockID.Hash)
 			cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartsHeader)
 			cs.eventBus.PublishEventValidBlock(cs.RoundStateEvent())
 			cs.evsw.FireEvent(types.EventValidBlock, &cs.RoundState)
@@ -1773,6 +1775,7 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID) (add
 	}
 
 	added, err = cs.ProposalBlockParts.AddPart(part)
+
 	if err != nil {
 		return added, err
 	}
@@ -1980,6 +1983,8 @@ func (cs *State) addVote(
 					cs.ProposalBlock = nil
 				}
 				if !cs.ProposalBlockParts.HasHeader(blockID.PartsHeader) {
+					cs.Logger.Info("addVote proposalBlockPart reset ,because of mismatch hash,",
+						"origin", hex.EncodeToString(cs.ProposalBlockParts.Hash()), "after", blockID.Hash)
 					cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartsHeader)
 				}
 				cs.evsw.FireEvent(types.EventValidBlock, &cs.RoundState)
