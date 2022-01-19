@@ -102,7 +102,7 @@ func RepairState(ctx *server.Context, onStart bool) {
 				latestVersion = lastMptVersion
 			}
 		}
-		startVersion = latestVersion - 2
+		startVersion = latestVersion
 	}
 	if startVersion <= 0 {
 		panic("height too low, please restart from height 0 with genesis file")
