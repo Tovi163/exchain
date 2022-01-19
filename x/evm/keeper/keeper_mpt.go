@@ -93,7 +93,7 @@ func (k *Keeper) OnStop(ctx sdk.Context) error {
 	triedb := k.db.TrieDB()
 	oecStartHeight := uint64(tmtypes.GetStartBlockHeight()) // start height of oec
 
-	for _, offset := range []uint64{1, 0} {
+	for _, offset := range []uint64{4, 3, 2, 1, 0} {
 		if number := uint64(ctx.BlockHeight()); number > offset {
 			recent := number - offset
 			if recent <= oecStartHeight || recent <= k.startHeight {
