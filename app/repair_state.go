@@ -97,6 +97,7 @@ func RepairState(ctx *server.Context, onStart bool) {
 		latestVersion := repairApp.getLatestVersion()
 		if types.HigherThanMars(latestVersion) {
 			lastMptVersion := int64(repairApp.EvmKeeper.GetLatestStoredBlockHeight())
+			fmt.Println("latestVersion", latestVersion, "lastMptVersion==", lastMptVersion)
 			if lastMptVersion < latestVersion {
 				latestVersion = lastMptVersion
 			}
