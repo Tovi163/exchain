@@ -11,17 +11,17 @@ import (
 )
 
 type runTxInfo struct {
-	handler        modeHandler
-	gasWanted      uint64
-	ctx            sdk.Context
-	runMsgCtx      sdk.Context
-	msCache        sdk.CacheMultiStore
-	msCacheAnte    sdk.CacheMultiStore
-	accountNonce   uint64
-	runMsgFinished bool
-	startingGas    uint64
-	gInfo          sdk.GasInfo
-	nodeSigVerifyResult   int
+	handler             modeHandler
+	gasWanted           uint64
+	ctx                 sdk.Context
+	runMsgCtx           sdk.Context
+	msCache             sdk.CacheMultiStore
+	msCacheAnte         sdk.CacheMultiStore
+	accountNonce        uint64
+	runMsgFinished      bool
+	startingGas         uint64
+	gInfo               sdk.GasInfo
+	nodeSigVerifyResult int
 
 	result  *sdk.Result
 	txBytes []byte
@@ -56,7 +56,6 @@ func (app *BaseApp) runtx(mode runTxMode, txBytes []byte, tx sdk.Tx, height int6
 		return info, err
 	}
 
-
 	defer func() {
 		if r := recover(); r != nil {
 			err = app.runTx_defer_recover(r, info)
@@ -74,12 +73,10 @@ func (app *BaseApp) runtx(mode runTxMode, txBytes []byte, tx sdk.Tx, height int6
 		handler.handleDeferRefund(info)
 	}()
 
-
 	if err := validateBasicTxMsgs(info.tx.GetMsgs()); err != nil {
 		return info, err
 	}
 	app.pin(ValTxMsgs, false, mode)
-
 
 	app.pin(AnteHandler, true, mode)
 	if app.anteHandler != nil {
@@ -96,7 +93,6 @@ func (app *BaseApp) runtx(mode runTxMode, txBytes []byte, tx sdk.Tx, height int6
 
 	return info, err
 }
-
 
 func (app *BaseApp) runAnte(info *runTxInfo, mode runTxMode) error {
 
@@ -167,9 +163,9 @@ func (app *BaseApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx 
 		return sdkerrors.ResponseDeliverTx(err, 0, 0, app.trace)
 	}
 
-	app.logger.Info("(app *BaseApp) DeliverT",
-		"wrapped-tx-hash", txhash(req.Tx),
-	)
+	//app.logger.Info("(app *BaseApp) DeliverT",
+	//"wrapped-tx-hash", txhash(req.Tx),
+	//)
 
 	if tx.GetType() == sdk.WrappedTxType {
 		req.Tx = tx.GetPayloadTxBytes()
@@ -198,7 +194,6 @@ func (app *BaseApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx 
 		Events:    result.Events.ToABCIEvents(),
 	}
 }
-
 
 // runTx processes a transaction within a given execution mode, encoded transaction
 // bytes, and the decoded transaction itself. All state transitions occur through
