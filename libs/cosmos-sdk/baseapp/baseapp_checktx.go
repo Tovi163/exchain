@@ -7,6 +7,7 @@ import (
 	sdkerrors "github.com/okex/exchain/libs/cosmos-sdk/types/errors"
 	abci "github.com/okex/exchain/libs/tendermint/abci/types"
 )
+
 // CheckTx implements the ABCI interface and executes a tx in CheckTx mode. In
 // CheckTx mode, messages are not executed. This means messages are only validated
 // and only the AnteHandler is executed. State is persisted to the BaseApp's
@@ -19,14 +20,14 @@ func (app *BaseApp) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
 		return sdkerrors.ResponseCheckTx(err, 0, 0, app.trace)
 	}
 
-	app.logger.Info("(app *BaseApp) CheckTx",
-		"wrapped-tx-hash", txhash(req.Tx),
-	)
+	//app.logger.Info("(app *BaseApp) CheckTx",
+	//	"wrapped-tx-hash", txhash(req.Tx),
+	//)
 
 	if tx.GetType() == sdk.WrappedTxType {
-		app.logger.Info("(app *BaseApp) CheckTx",
-			"payload-tx-hash", txhash(tx.GetPayloadTxBytes()),
-		)
+		//app.logger.Info("(app *BaseApp) CheckTx",
+		//	"payload-tx-hash", txhash(tx.GetPayloadTxBytes()),
+		//)
 	}
 
 	//app.logger.Info("(app *BaseApp) CheckTx", "payload", tx.GetPayloadTx())
