@@ -158,6 +158,7 @@ func (k *Keeper) PushData2Database(ctx sdk.Context) {
 			// If the header is missing (canonical chain behind), we're reorging a low
 			// diff sidechain. Suspend committing until this operation is completed.
 			chRoot := k.GetMptRootHash(uint64(chosen))
+			k.mptCommitMu.Lock()
 			if chRoot == (ethcmn.Hash{}) {
 				k.Logger(ctx).Debug("Reorg in progress, trie commit postponed", "number", chosen)
 			} else {
@@ -179,6 +180,7 @@ func (k *Keeper) PushData2Database(ctx sdk.Context) {
 				}
 				triedb.Dereference(root.(ethcmn.Hash))
 			}
+			k.mptCommitMu.Unlock()
 		}
 	}
 }

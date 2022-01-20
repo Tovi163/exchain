@@ -7,6 +7,7 @@ import (
 	"github.com/okex/exchain/libs/cosmos-sdk/client/flags"
 	"github.com/spf13/viper"
 	"math/big"
+	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
 	ethcmn "github.com/ethereum/go-ethereum/common"
@@ -62,6 +63,8 @@ type Keeper struct {
 
 	EvmStateDb     *types.CommitStateDB
 	UpdatedAccount []ethcmn.Address
+
+	mptCommitMu sync.Mutex
 }
 
 // NewKeeper generates new evm module keeper
@@ -103,6 +106,7 @@ func NewKeeper(
 		db:             sdk.InstanceOfEvmStore(viper.GetString(flags.FlagHome)),
 		triegc:         prque.New(nil),
 		UpdatedAccount: make([]ethcmn.Address, 0),
+		mptCommitMu:    sync.Mutex{},
 	}
 	k.Watcher.SetWatchDataFunc()
 	ak.SetObserverKeeper(k)
