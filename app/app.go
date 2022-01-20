@@ -2,7 +2,8 @@ package app
 
 import (
 	"fmt"
-     authtypes "github.com/okex/exchain/libs/cosmos-sdk/x/auth/types"
+	authtypes "github.com/okex/exchain/libs/cosmos-sdk/x/auth/types"
+	"github.com/spf13/viper"
 	"io"
 	"math/big"
 	"os"
@@ -52,7 +53,6 @@ import (
 	"github.com/okex/exchain/x/slashing"
 	"github.com/okex/exchain/x/staking"
 	"github.com/okex/exchain/x/token"
-	"github.com/spf13/viper"
 	dbm "github.com/tendermint/tm-db"
 )
 
@@ -189,7 +189,7 @@ func NewOKExChainApp(
 		"MercuryHeight", tmtypes.GetMercuryHeight(),
 		"VenusHeight", tmtypes.GetVenusHeight(),
 		"MarsHeight", tmtypes.GetMarsHeight(),
-		)
+	)
 	onceLog.Do(func() {
 		iavllog := logger.With("module", "iavl")
 		logFunc := func(level int, format string, args ...interface{}) {
@@ -607,9 +607,10 @@ func PreRun(ctx *server.Context) error {
 		return err
 	}
 	// repair state on start
-	if viper.GetBool(FlagEnableRepairState) {
+	if viper.GetBool(FlagEnableRepairState) { //TODO:need delete?
 		repairStateOnStart(ctx)
 	}
+
 	return nil
 }
 
@@ -625,7 +626,7 @@ func NewEvmModuleStopLogic(ak *evm.Keeper) sdk.CustomizeOnStop {
 func NewMptCommitHandler(ak *evm.Keeper) sdk.MptCommitHandler {
 	return func(ctx sdk.Context) {
 		if tmtypes.HigherThanMars(ctx.BlockHeight()) {
-			ak.PushData2Database(ctx)
+			go ak.PushData2Database(ctx)
 		}
 	}
 }

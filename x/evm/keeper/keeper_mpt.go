@@ -16,7 +16,7 @@ var (
 	KeyPrefixLatestStoredHeight = []byte{0x02}
 )
 
-const TriesInMemory = 100
+const TriesInMemory = 64 // TODO: need discuss
 
 // GetMptRootHash gets root mpt hash from block height
 func (k *Keeper) GetMptRootHash(height uint64) ethcmn.Hash {
@@ -94,7 +94,7 @@ func (k *Keeper) OnStop(ctx sdk.Context) error {
 		triedb := k.db.TrieDB()
 		oecStartHeight := uint64(tmtypes.GetStartBlockHeight()) // start height of oec
 
-		for _, offset := range []uint64{0, 1, TriesInMemory - 1} {
+		for _, offset := range []uint64{5, 4, 3, 2, 1, 0} {
 			if number := uint64(ctx.BlockHeight()); number > offset {
 				recent := number - offset
 				if recent <= oecStartHeight || recent <= k.startHeight {
@@ -109,6 +109,7 @@ func (k *Keeper) OnStop(ctx sdk.Context) error {
 					if err := triedb.Commit(recentMptRoot, true, nil); err != nil {
 						k.Logger(ctx).Error("Failed to commit recent state trie", "err", err)
 					}
+					k.SetLatestStoredBlockHeight(recent)
 				}
 			}
 		}
@@ -135,7 +136,7 @@ func (k *Keeper) PushData2Database(ctx sdk.Context) {
 	} else {
 		// Full but not archive node, do proper garbage collection
 		triedb.Reference(curMptRoot, ethcmn.Hash{}) // metadata reference to keep trie alive
-		k.triegc.Push(curMptRoot, -int64(curHeight))
+		k.triegc.Push(curMptRoot, -curHeight)
 
 		if curHeight > TriesInMemory {
 			// If we exceeded our memory allowance, flush matured singleton nodes to disk
@@ -172,7 +173,7 @@ func (k *Keeper) PushData2Database(ctx sdk.Context) {
 			// Garbage collect anything below our required write retention
 			for !k.triegc.Empty() {
 				root, number := k.triegc.Pop()
-				if int64(-number) > chosen {
+				if -number > chosen {
 					k.triegc.Push(root, number)
 					break
 				}

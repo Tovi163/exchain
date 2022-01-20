@@ -104,6 +104,7 @@ func RepairState(ctx *server.Context, onStart bool) {
 		latestVersion := repairApp.getLatestVersion()
 		if types.HigherThanMars(latestVersion) {
 			lastMptVersion := int64(repairApp.EvmKeeper.GetLatestStoredBlockHeight())
+			log.Println("LastMptVersion", lastMptVersion)
 			if lastMptVersion < latestVersion {
 				latestVersion = lastMptVersion
 			}
@@ -158,6 +159,7 @@ func doRepair(ctx *server.Context, state sm.State, stateStoreDB dbm.DB,
 	// repair state
 	blockExec := sm.NewBlockExecutor(stateStoreDB, ctx.Logger, proxyApp.Consensus(), mock.Mempool{}, sm.MockEvidencePool{})
 	blockExec.SetIsAsyncDeliverTx(viper.GetBool(sm.FlagParalleledTx))
+	log.Println("RepairState", "startHeight", startHeight+1, "endHeight", latestHeight)
 	for height := startHeight + 1; height <= latestHeight; height++ {
 		repairBlock, repairBlockMeta := loadBlock(height, dataDir)
 		state, _, err = blockExec.ApplyBlock(state, repairBlockMeta.BlockID, repairBlock)
@@ -178,6 +180,7 @@ func doRepair(ctx *server.Context, state sm.State, stateStoreDB dbm.DB,
 		repairedAppHash := res.LastBlockAppHash
 		log.Println("Repaired block height", repairedBlockHeight)
 		log.Println("Repaired app hash", fmt.Sprintf("%X", repairedAppHash))
+		log.Println("Repaired lastResultHash", fmt.Sprintf("%X", state.LastResultsHash))
 	}
 }
 
