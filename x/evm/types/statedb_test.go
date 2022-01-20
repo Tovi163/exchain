@@ -574,14 +574,16 @@ func (suite *StateDBTestSuite) TestCommitStateDB_Finalize() {
 	for _, tc := range testCase {
 		tc.malleate()
 
-		suite.stateDB.Finalise(tc.deleteObjs)
+		err := suite.stateDB.Finalise(tc.deleteObjs)
 
 		if !tc.expPass {
+			suite.Require().Error(err, tc.name)
 			hash := suite.stateDB.GetCommittedState(suite.address, ethcmn.BytesToHash([]byte("key")))
 			suite.Require().NotEqual(ethcmn.Hash{}, hash, tc.name)
 			continue
 		}
 
+		suite.Require().NoError(err, tc.name)
 		acc := suite.app.AccountKeeper.GetAccount(suite.ctx, sdk.AccAddress(suite.address.Bytes()))
 
 		if tc.deleteObjs {

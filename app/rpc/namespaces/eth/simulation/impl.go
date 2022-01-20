@@ -18,6 +18,7 @@ import (
 	"github.com/okex/exchain/libs/cosmos-sdk/x/params"
 	"github.com/okex/exchain/libs/cosmos-sdk/x/supply"
 	"github.com/okex/exchain/x/ammswap"
+	"github.com/okex/exchain/x/backend"
 	"github.com/okex/exchain/x/dex"
 	distr "github.com/okex/exchain/x/distribution"
 	evmtypes "github.com/okex/exchain/x/evm/types"
@@ -147,6 +148,7 @@ func NewBankKeeperProxy() BankKeeperProxy {
 		token.ModuleName:          {supply.Minter, supply.Burner},
 		dex.ModuleName:            nil,
 		order.ModuleName:          nil,
+		backend.ModuleName:        nil,
 		ammswap.ModuleName:        {supply.Minter, supply.Burner},
 		farm.ModuleName:           nil,
 		farm.YieldFarmingAccount:  nil,

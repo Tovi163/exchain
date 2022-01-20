@@ -514,7 +514,7 @@ func (tree *MutableTree) Rollback() {
 func (tree *MutableTree) GetVersioned(key []byte, version int64) (
 	index int64, value []byte,
 ) {
-	if tree.VersionExists(version) {
+	if tree.versions.Get(version) {
 		t, err := tree.GetImmutable(version)
 		if err != nil {
 			return -1, nil

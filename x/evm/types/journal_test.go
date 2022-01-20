@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -131,19 +132,7 @@ func (suite *JournalTestSuite) setup() {
 	bk := bank.NewBaseKeeper(ak, bankSubspace, make(map[string]bool))
 	sk := supply.NewKeeper(cdc, supplyKey, ak, bk, make(map[string][]string))
 	suite.ctx = sdk.NewContext(cms, abci.Header{ChainID: "ethermint-8"}, false, tmlog.NewNopLogger())
-	csdbParams := CommitStateDBParams{
-		StoreKey:      storeKey,
-		ParamSpace:    evmSubspace,
-		AccountKeeper: &ak,
-		SupplyKeeper:  sk,
-		Watcher:       nil,
-		BankKeeper:    bk,
-		Ada:           nil,
-		Cdc:           cdc,
-		DB:            nil,
-		Trie:          nil,
-	}
-	suite.stateDB = NewCommitStateDB(csdbParams).WithContext(suite.ctx)
+	suite.stateDB = NewCommitStateDB(suite.ctx, storeKey, evmSubspace, &ak, sk, bk, nil, cdc).WithContext(suite.ctx)
 	suite.stateDB.SetParams(DefaultParams())
 }
 
@@ -252,7 +241,7 @@ func (suite *JournalTestSuite) TestJournal_append_revert() {
 		if tc.entry.dirtied() != nil {
 			dirtyCount++
 
-			suite.Require().Equal(dirtyCount, suite.journal.dirties[suite.address], tc.name)
+			suite.Require().Equal(dirtyCount, suite.journal.getDirty(suite.address), tc.name)
 		}
 	}
 
@@ -260,16 +249,29 @@ func (suite *JournalTestSuite) TestJournal_append_revert() {
 	suite.journal.revert(suite.stateDB, 0)
 
 	// verify the dirty entry has been deleted
-	idx, ok := suite.journal.dirties[suite.address]
+	idx, ok := suite.journal.addressToJournalIndex[suite.address]
 	suite.Require().False(ok)
 	suite.Require().Zero(idx)
 }
 
 func (suite *JournalTestSuite) TestJournal_preimage_revert() {
-	suite.stateDB.preimages = map[ethcmn.Hash][]byte{
-		ethcmn.BytesToHash([]byte("hash")): []byte("preimage0"),
-		ethcmn.BytesToHash([]byte("hash1")): []byte("preimage1"),
-		ethcmn.BytesToHash([]byte("hash2")): []byte("preimage2"),
+	suite.stateDB.preimages = []preimageEntry{
+		{
+			hash:     ethcmn.BytesToHash([]byte("hash")),
+			preimage: []byte("preimage0"),
+		},
+		{
+			hash:     ethcmn.BytesToHash([]byte("hash1")),
+			preimage: []byte("preimage1"),
+		},
+		{
+			hash:     ethcmn.BytesToHash([]byte("hash2")),
+			preimage: []byte("preimage2"),
+		},
+	}
+
+	for i, preimage := range suite.stateDB.preimages {
+		suite.stateDB.hashToPreimageIndex[preimage.hash] = i
 	}
 
 	change := addPreimageChange{
@@ -279,24 +281,37 @@ func (suite *JournalTestSuite) TestJournal_preimage_revert() {
 	// delete first entry
 	change.revert(suite.stateDB)
 	suite.Require().Len(suite.stateDB.preimages, 2)
+	suite.Require().Equal(len(suite.stateDB.preimages), len(suite.stateDB.hashToPreimageIndex))
 
-	for key, value := range suite.stateDB.preimages {
-		suite.Require().NotEqual(len("preimage"), string(value), key.String())
+	for i, entry := range suite.stateDB.preimages {
+		suite.Require().Equal(fmt.Sprintf("preimage%d", i+1), string(entry.preimage), entry.hash.String())
+		idx, found := suite.stateDB.hashToPreimageIndex[entry.hash]
+		suite.Require().True(found)
+		suite.Require().Equal(i, idx)
 	}
 }
 
 func (suite *JournalTestSuite) TestJournal_createObjectChange_revert() {
 	addr := ethcmn.BytesToAddress([]byte("addr"))
 
-	suite.stateDB.stateObjects = map[ethcmn.Address]*stateObject{
-		addr:  &stateObject{
+	suite.stateDB.stateObjects = map[ethcmn.Address]*stateEntry{
+		addr: {
 			address: addr,
+			stateObject: &stateObject{
+				address: addr,
+			},
 		},
-		ethcmn.BytesToAddress([]byte("addr1")): &stateObject{
+		ethcmn.BytesToAddress([]byte("addr1")): {
 			address: ethcmn.BytesToAddress([]byte("addr1")),
+			stateObject: &stateObject{
+				address: ethcmn.BytesToAddress([]byte("addr1")),
+			},
 		},
-		ethcmn.BytesToAddress([]byte("addr2")): &stateObject{
+		ethcmn.BytesToAddress([]byte("addr2")): {
 			address: ethcmn.BytesToAddress([]byte("addr2")),
+			stateObject: &stateObject{
+				address: ethcmn.BytesToAddress([]byte("addr2")),
+			},
 		},
 	}
 
@@ -318,11 +333,11 @@ func (suite *JournalTestSuite) TestJournal_createObjectChange_revert() {
 
 func (suite *JournalTestSuite) TestJournal_dirty() {
 	// dirty entry hasn't been set
-	idx, ok := suite.journal.dirties[suite.address]
+	idx, ok := suite.journal.addressToJournalIndex[suite.address]
 	suite.Require().False(ok)
 	suite.Require().Zero(idx)
 
 	// update dirty count
 	suite.journal.dirty(suite.address)
-	suite.Require().Equal(1, suite.journal.dirties[suite.address])
+	suite.Require().Equal(1, suite.journal.getDirty(suite.address))
 }

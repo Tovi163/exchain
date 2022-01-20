@@ -219,59 +219,44 @@ func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 
 // PruneBlocks removes block up to (but not including) a height. It returns number of blocks pruned.
 func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
-	return bs.deleteBatch(height, false)
-}
-
-// DeleteBlocksFromTop removes block down to (but not including) a height. It returns number of blocks deleted.
-func (bs *BlockStore) DeleteBlocksFromTop(height int64) (uint64, error) {
-	return bs.deleteBatch(height, true)
-}
-
-func (bs *BlockStore) deleteBatch(height int64, deleteFromTop bool) (uint64, error) {
 	if height <= 0 {
 		return 0, fmt.Errorf("height must be greater than 0")
 	}
-
 	bs.mtx.RLock()
-	top := bs.height
+	if height > bs.height {
+		bs.mtx.RUnlock()
+		return 0, fmt.Errorf("cannot prune beyond the latest height %v", bs.height)
+	}
 	base := bs.base
 	bs.mtx.RUnlock()
-	if height > top {
-		return 0, fmt.Errorf("cannot delete beyond the latest height %v, delete from top %t", top, deleteFromTop)
-	}
 	if height < base {
-		return 0, fmt.Errorf("cannot delete to height %v, it is lower than base height %v, delete from top %t",
-			height, base, deleteFromTop)
+		return 0, fmt.Errorf("cannot prune to height %v, it is lower than base height %v",
+			height, base)
 	}
 
-	deleted := uint64(0)
+	pruned := uint64(0)
 	batch := bs.db.NewBatch()
 	defer batch.Close()
-	flush := func(batch db.Batch, height int64) error {
+	flush := func(batch db.Batch, base int64) error {
 		// We can't trust batches to be atomic, so update base first to make sure noone
 		// tries to access missing blocks.
 		bs.mtx.Lock()
-		if deleteFromTop {
-			bs.height = height
-		} else {
-			bs.base = height
-		}
+		bs.base = base
 		bs.mtx.Unlock()
 		bs.saveState()
 
 		err := batch.WriteSync()
 		if err != nil {
-			batch.Close()
-			return fmt.Errorf("failed to delete to height %v, delete from top %t: %w", height, deleteFromTop, err)
+			return fmt.Errorf("failed to prune up to height %v: %w", base, err)
 		}
 		batch.Close()
 		return nil
 	}
 
-	deleteFn := func(h int64) error {
+	for h := base; h < height; h++ {
 		meta := bs.LoadBlockMeta(h)
 		if meta == nil { // assume already deleted
-			return nil
+			continue
 		}
 		batch.Delete(calcBlockMetaKey(h))
 		batch.Delete(calcBlockHashKey(meta.BlockID.Hash))
@@ -280,32 +265,16 @@ func (bs *BlockStore) deleteBatch(height int64, deleteFromTop bool) (uint64, err
 		for p := 0; p < meta.BlockID.PartsHeader.Total; p++ {
 			batch.Delete(calcBlockPartKey(h, p))
 		}
-		deleted++
+		pruned++
 
 		// flush every 1000 blocks to avoid batches becoming too large
-		if deleted%1000 == 0 && deleted > 0 {
+		if pruned%1000 == 0 && pruned > 0 {
 			err := flush(batch, h)
 			if err != nil {
-				return err
+				return 0, err
 			}
 			batch = bs.db.NewBatch()
-		}
-		return nil
-	}
-
-	if deleteFromTop {
-		for h := top; h > height; h-- {
-			err := deleteFn(h)
-			if err != nil {
-				return 0, err
-			}
-		}
-	} else {
-		for h := base; h < height; h++ {
-			err := deleteFn(h)
-			if err != nil {
-				return 0, err
-			}
+			defer batch.Close()
 		}
 	}
 
@@ -313,7 +282,7 @@ func (bs *BlockStore) deleteBatch(height int64, deleteFromTop bool) (uint64, err
 	if err != nil {
 		return 0, err
 	}
-	return deleted, nil
+	return pruned, nil
 }
 
 // SaveBlock persists the given block, blockParts, and seenCommit to the underlying db.
