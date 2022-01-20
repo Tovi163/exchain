@@ -49,7 +49,6 @@ func repairStateOnStart(ctx *server.Context) {
 	orgIgnoreVersionCheck := iavl.GetIgnoreVersionCheck()
 	iavl.EnableAsyncCommit = false
 	RepairState(ctx, true)
-	fmt.Println("repair-state-on-start:end")
 	//set original config
 	sm.SetIgnoreSmbCheck(orgIgnoreSmbCheck)
 	iavl.SetIgnoreVersionCheck(orgIgnoreVersionCheck)
@@ -57,7 +56,6 @@ func repairStateOnStart(ctx *server.Context) {
 	// load latest block height
 	dataDir := filepath.Join(ctx.Config.RootDir, "data")
 	rmLockByDir(dataDir)
-	//panic("scf--")
 }
 
 func RepairState(ctx *server.Context, onStart bool) {
@@ -100,7 +98,7 @@ func RepairState(ctx *server.Context, onStart bool) {
 		latestVersion := repairApp.getLatestVersion()
 		if types.HigherThanMars(latestVersion) {
 			lastMptVersion := int64(repairApp.EvmKeeper.GetLatestStoredBlockHeight())
-			fmt.Println("latestVersion", latestVersion, "lastMptVersion==", lastMptVersion)
+			log.Println("LastMptVersion", lastMptVersion)
 			if lastMptVersion < latestVersion {
 				latestVersion = lastMptVersion
 			}
@@ -128,7 +126,6 @@ func RepairState(ctx *server.Context, onStart bool) {
 func createRepairApp(ctx *server.Context) (proxy.AppConns, *repairApp, error) {
 	rootDir := ctx.Config.RootDir
 	dataDir := filepath.Join(rootDir, "data")
-	fmt.Println("createRepairApp-datadir", dataDir)
 	db, err := openDB(applicationDB, dataDir)
 	panicError(err)
 	repairApp := newRepairApp(ctx.Logger, db, nil)
@@ -160,6 +157,7 @@ func doRepair(ctx *server.Context, state sm.State, stateStoreDB dbm.DB,
 	// repair state
 	blockExec := sm.NewBlockExecutor(stateStoreDB, ctx.Logger, proxyApp.Consensus(), mock.Mempool{}, sm.MockEvidencePool{})
 	blockExec.SetIsAsyncDeliverTx(viper.GetBool(sm.FlagParalleledTx))
+	log.Println("RepairState", "startHeight", startHeight+1, "endHeight", latestHeight)
 	for height := startHeight + 1; height <= latestHeight; height++ {
 		repairBlock, repairBlockMeta := loadBlock(height, dataDir)
 		state, _, err = blockExec.ApplyBlock(state, repairBlockMeta.BlockID, repairBlock)
