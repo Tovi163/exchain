@@ -114,7 +114,7 @@ func (st *Store) GetImmutable(version int64) (*Store, error) {
 
 // Commit commits the current store state and returns a CommitID with the new
 // version and hash.
-func (st *Store) Commit() types.CommitID {
+func (st *Store) CommitterCommit() types.CommitID {
 	hash, version, err := st.tree.SaveVersion()
 	if err != nil {
 		panic(err)

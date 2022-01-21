@@ -18,7 +18,7 @@ type Store interface { //nolint
 
 // something that can persist to disk
 type Committer interface {
-	Commit() CommitID
+	CommitterCommit() CommitID
 	LastCommitID() CommitID
 
 	// TODO: Deprecate after 0.38.5

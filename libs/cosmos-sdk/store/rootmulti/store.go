@@ -330,7 +330,7 @@ func (rs *Store) LastCommitID() types.CommitID {
 }
 
 // Implements Committer/CommitStore.
-func (rs *Store) Commit() types.CommitID {
+func (rs *Store) CommitterCommit() types.CommitID {
 	previousHeight := rs.lastCommitInfo.Version
 	version := previousHeight + 1
 	rs.lastCommitInfo = commitStores(version, rs.stores)
@@ -780,7 +780,7 @@ func commitStores(version int64, storeMap map[types.StoreKey]types.CommitKVStore
 	storeInfos := make([]storeInfo, 0, len(storeMap))
 
 	for key, store := range storeMap {
-		commitID := store.Commit()
+		commitID := store.CommitterCommit()
 
 		if store.GetStoreType() == types.StoreTypeTransient {
 			continue
