@@ -132,7 +132,7 @@ func (k *Keeper) PushData2Database(ctx sdk.Context) {
 			panic("fail to commit mpt data: " + err.Error())
 		}
 		k.SetLatestStoredBlockHeight(uint64(curHeight))
-		k.Logger(ctx).Info("sync push data to db", "block", curHeight, "trieHash", curMptRoot)
+		fmt.Println("'sync push data to db", "block", curHeight, "trieHash", curMptRoot)
 	} else {
 		// Full but not archive node, do proper garbage collection
 		triedb.Reference(curMptRoot, ethcmn.Hash{}) // metadata reference to keep trie alive
@@ -168,7 +168,7 @@ func (k *Keeper) PushData2Database(ctx sdk.Context) {
 					panic("fail to commit mpt data: " + err.Error())
 				}
 				k.SetLatestStoredBlockHeight(uint64(chosen))
-				k.Logger(ctx).Info("async push data to db", "block", chosen, "trieHash", chRoot)
+				fmt.Println("async push data to db", "block", chosen, "trieHash", chRoot)
 			}
 
 			// Garbage collect anything below our required write retention
