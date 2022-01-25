@@ -204,7 +204,7 @@ func (k *Keeper) Commit(ctx sdk.Context) {
 }
 
 func (k *Keeper) AddAsyncTask(height int64) {
-	k.asyncChain <= height
+	k.asyncChain <- height
 }
 func (k *Keeper) asyncCommit() {
 	go func() {
