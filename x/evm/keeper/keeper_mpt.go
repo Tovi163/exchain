@@ -186,6 +186,8 @@ func (k *Keeper) PushData2Database(height int64) {
 }
 
 func (k *Keeper) Commit(ctx sdk.Context) {
+	k.mptCommitMu.Lock()
+	defer k.mptCommitMu.Unlock()
 	// commit contract storage mpt trie
 	k.EvmStateDb.WithContext(ctx).Commit(true)
 
