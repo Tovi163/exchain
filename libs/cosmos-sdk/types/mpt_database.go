@@ -23,6 +23,7 @@ var (
 
 	TrieDirtyDisabled      = false
 	TrieCacheSize     uint = 2048 // MB
+	MptAsnyc               = true
 )
 
 const (
