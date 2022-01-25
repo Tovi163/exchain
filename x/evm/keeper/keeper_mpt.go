@@ -122,8 +122,8 @@ func (k *Keeper) OnStop(ctx sdk.Context) error {
 	return nil
 }
 
-func (k *Keeper) PushData2Database(ctx sdk.Context) {
-	curHeight := ctx.BlockHeight()
+func (k *Keeper) PushData2Database(height int64) {
+	curHeight := height
 	curMptRoot := k.GetMptRootHash(uint64(curHeight))
 
 	triedb := k.db.TrieDB()
@@ -160,7 +160,7 @@ func (k *Keeper) PushData2Database(ctx sdk.Context) {
 			chRoot := k.GetMptRootHash(uint64(chosen))
 			k.mptCommitMu.Lock()
 			if chRoot == (ethcmn.Hash{}) {
-				k.Logger(ctx).Debug("Reorg in progress, trie commit postponed", "number", chosen)
+				//k.Logger(ctx).Debug("Reorg in progress, trie commit postponed", "number", chosen)
 			} else {
 				// Flush an entire trie and restart the counters, it's not a thread safe process,
 				// cannot use a go thread to run, or it will lead 'fatal error: concurrent map read and map write' error
@@ -201,4 +201,22 @@ func (k *Keeper) Commit(ctx sdk.Context) {
 		return nil
 	})
 	k.SetMptRootHash(uint64(ctx.BlockHeight()), root)
+}
+
+func (k *Keeper) AddAsyncTask(height int64) {
+	k.asyncChain <= height
+}
+func (k *Keeper) asyncCommit() {
+	go func() {
+		for {
+			select {
+			case height := <-k.asyncChain:
+				fmt.Println("ready to push", height)
+				k.PushData2Database(height)
+				fmt.Println("end to push", height)
+
+			}
+		}
+	}()
+
 }
