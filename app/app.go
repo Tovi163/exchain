@@ -626,7 +626,7 @@ func NewEvmModuleStopLogic(ak *evm.Keeper) sdk.CustomizeOnStop {
 func NewMptCommitHandler(ak *evm.Keeper) sdk.MptCommitHandler {
 	return func(ctx sdk.Context) {
 		if tmtypes.HigherThanMars(ctx.BlockHeight()) {
-			go ak.PushData2Database(ctx)
+			ak.PushData2Database(ctx)
 		}
 	}
 }
