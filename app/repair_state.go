@@ -108,9 +108,8 @@ func RepairState(ctx *server.Context, onStart bool) {
 
 	// load start version
 	startVersion := viper.GetInt64(FlagStartHeight)
-	if startVersion == 0 {
-		latestVersion := repairApp.getLatestVersion()
-		startVersion = latestVersion - 2
+	if startVersion == 0 || startVersion > commitVersion{
+		startVersion = commitVersion - 2
 	}
 	if startVersion <= 0 {
 		panic("height too low, please restart from height 0 with genesis file")
