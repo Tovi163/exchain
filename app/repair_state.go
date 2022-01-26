@@ -118,11 +118,13 @@ func RepairState(ctx *server.Context, onStart bool) {
 	err = repairApp.LoadStartVersion(startVersion)
 	panicError(err)
 
+	rawTrieDirtyDisabledFlag :=  viper.GetBool(types3.FlagTrieDirtyDisabled)
 	types3.TrieDirtyDisabled = true
-	//repairApp.EvmKeeper.SetTargetMptVersion(startVersion)
 
 	// repair data by apply the latest two blocks
 	doRepair(ctx, state, stateStoreDB, proxyApp, startVersion, latestBlockHeight, dataDir)
+
+	types3.TrieDirtyDisabled = rawTrieDirtyDisabledFlag
 }
 
 func createRepairApp(ctx *server.Context) (proxy.AppConns, *repairApp, error) {

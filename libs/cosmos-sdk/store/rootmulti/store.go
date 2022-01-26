@@ -1246,6 +1246,8 @@ func (rs *Store) StopStore() {
 		case types.StoreTypeDB:
 			panic("unexpected db store")
 		case types.StoreTypeMulti:
+			panic("unexpected multi store")
+		case types.StoreTypeMPT:
 			s := store.(*mpt.MptStore)
 			s.OnStop()
 		case types.StoreTypeTransient:

@@ -89,7 +89,8 @@ func (ms *MptStore) openTrie(id types.CommitID) error {
 	latestStoredHeight := ms.GetLatestStoredBlockHeight()
 	openHeight := uint64(id.Version)
 	if openHeight > latestStoredHeight {
-		return fmt.Errorf("fail to open mpt trie, the target version is: %d, the latest stored version is: %d", openHeight, latestStoredHeight)
+		return fmt.Errorf("fail to open mpt trie, the target version is: %d, the latest stored version is: %d, " +
+			"please repair", openHeight, latestStoredHeight)
 	}
 
 	openedRootHash := ms.GetMptRootHash(openHeight)
@@ -311,27 +312,31 @@ func (ms *MptStore) OnStop() error {
 		triedb := ms.db.TrieDB()
 		oecStartHeight := uint64(tmtypes.GetStartBlockHeight()) // start height of oec
 
-		for offset := uint64(0) ; offset < TriesInMemory; offset++ {
-			if number := uint64(ms.version); number > offset {
-				recent := number - offset
-				if recent <= oecStartHeight || recent <= uint64(ms.startVersion) {
-					break
+		latestVersion := uint64(ms.version)
+		offset := uint64(TriesInMemory)
+		for ; offset > 0 ; offset-- {
+			if latestVersion > offset {
+				version := latestVersion - offset
+				if version <= oecStartHeight || version <= uint64(ms.startVersion) {
+					continue
 				}
 
-				recentMptRoot := ms.GetMptRootHash(recent)
+				recentMptRoot := ms.GetMptRootHash(version)
 				if recentMptRoot == (ethcmn.Hash{}) {
 					if ms.logger != nil {
-						ms.logger.Debug("Reorg in progress, trie commit postponed", "block", recent)
+						ms.logger.Debug("Reorg in progress, trie commit postponed", "block", version)
 					}
 				} else {
 					if ms.logger != nil {
-						ms.logger.Info("Writing cached state to disk", "block", recent, "trieHash", recentMptRoot)
+						ms.logger.Info("Writing cached state to disk", "block", version, "trieHash", recentMptRoot)
 					}
 					if err := triedb.Commit(recentMptRoot, true, nil); err != nil {
 						if ms.logger != nil {
 							ms.logger.Error("Failed to commit recent state trie", "err", err)
 						}
+						break
 					}
+					ms.SetLatestStoredBlockHeight(version)
 				}
 			}
 		}

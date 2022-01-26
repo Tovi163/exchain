@@ -38,7 +38,15 @@ func displayState(ctx *server.Context) {
 	// load start version
 	displayVersion := viper.GetInt64(FlagDisplayVersion)
 
-	err := dispApp.LoadHeight(displayVersion)
+	// get async commit version
+	commitVersion, err := dispApp.GetCommitVersion()
+	panicError(err)
+
+	if displayVersion > commitVersion {
+		displayVersion = commitVersion
+	}
+
+	err = dispApp.LoadHeight(displayVersion)
 	panicError(err)
 
 	contractAddr := viper.GetString(FlagDisplayContractAddr)

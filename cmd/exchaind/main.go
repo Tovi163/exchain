@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/okex/exchain/app/logevents"
 	"github.com/okex/exchain/libs/types"
 	"io"
@@ -115,8 +114,8 @@ func main() {
 }
 
 func closeApp(iApp abci.Application) {
-	fmt.Println("Close App")
 	app := iApp.(*app.OKExChainApp)
+	app.Logger().Info("Close App")
 	app.StopBaseApp()
 	evmtypes.CloseIndexer()
 	evmtypes.CloseTracer()
