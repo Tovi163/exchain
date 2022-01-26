@@ -13,7 +13,6 @@ import (
 	"github.com/okex/exchain/libs/cosmos-sdk/client/flags"
 	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
 	"github.com/spf13/viper"
-	dbm "github.com/tendermint/tm-db"
 )
 
 const (
@@ -35,7 +34,7 @@ func InstanceOfMptStore() ethstate.Database {
 
 		backend := viper.GetString(FlagDBBackend)
 		if backend == "" {
-			backend = string(dbm.GoLevelDBBackend)
+			backend = string(types.GoLevelDBBackend)
 		}
 
 		kvstore, e := types.CreateKvDB(MptSpace, types.BackendType(backend), path)
