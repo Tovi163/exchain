@@ -1,6 +1,7 @@
 package mpt
 
 import (
+	"fmt"
 	"github.com/VictoriaMetrics/fastcache"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	types3 "github.com/ethereum/go-ethereum/core/types"
@@ -68,7 +69,7 @@ func (ms *MptStore) GetFlatKVWriteCount() int {
 	return 0
 }
 
-func NewMptStore(logger tmlog.Logger, rootRetrieval types2.StorageRootRetrieval) *MptStore {
+func NewMptStore(logger tmlog.Logger, rootRetrieval types2.StorageRootRetrieval, id types.CommitID) (*MptStore, error) {
 	db := InstanceOfMptStore()
 	triegc := prque.New(nil)
 
@@ -79,26 +80,33 @@ func NewMptStore(logger tmlog.Logger, rootRetrieval types2.StorageRootRetrieval)
 		rootRetrieval: rootRetrieval,
 		kvCache:       fastcache.New(2 * 1024 * 1024 * 1024),
 	}
-	mptStore.openTrie()
+	err := mptStore.openTrie(id)
 
-	return mptStore
+	return mptStore, err
 }
 
-func (ms *MptStore) openTrie() {
+func (ms *MptStore) openTrie(id types.CommitID) error {
 	latestStoredHeight := ms.GetLatestStoredBlockHeight()
-	latestStoredRootHash := ms.GetMptRootHash(latestStoredHeight)
+	openHeight := uint64(id.Version)
+	if openHeight > latestStoredHeight {
+		return fmt.Errorf("fail to open mpt trie, the target version is: %d, the latest stored version is: %d", openHeight, latestStoredHeight)
+	}
 
-	tr, err := ms.db.OpenTrie(latestStoredRootHash)
+	openedRootHash := ms.GetMptRootHash(openHeight)
+	tr, err := ms.db.OpenTrie(openedRootHash)
 	if err != nil {
 		panic("Fail to open root mpt: " + err.Error())
 	}
+
 	ms.trie = tr
-	ms.version = int64(latestStoredHeight)
-	ms.startVersion = int64(latestStoredHeight)
+	ms.version = id.Version
+	ms.startVersion = id.Version
 
 	if ms.logger != nil {
-		ms.logger.Info("open acc mpt trie", "version", latestStoredHeight, "trieHash", latestStoredRootHash)
+		ms.logger.Info("open acc mpt trie", "version", openHeight, "trieHash", openedRootHash)
 	}
+
+	return nil
 }
 
 /*
@@ -191,7 +199,7 @@ func (ms *MptStore) Commit(delta *iavl.TreeDelta, bytes []byte) (types.CommitID,
 	// push data to database
 	ms.PushData2Database(ms.version)
 
-	return types.CommitID{
+	return types.CommitID {
 		Version: ms.version,
 		Hash:    root.Bytes(),
 	}, iavl.TreeDelta{}, nil
@@ -258,6 +266,7 @@ func (ms *MptStore) PushData2Database(curHeight int64) {
 			// Find the next state trie we need to commit
 			chosen := curHeight - TriesInMemory
 
+			// we start at startVersion, but the chosen height may be startVersion - triesInMemory
 			if chosen <= ms.startVersion {
 				return
 			}
@@ -298,15 +307,11 @@ func (ms *MptStore) PushData2Database(curHeight int64) {
 // it will abort them using the procInterrupt.
 func (ms *MptStore) OnStop() error {
 	// Ensure the state of a recent block is also stored to disk before exiting.
-	// We're writing three different states to catch different restart scenarios:
-	//  - HEAD:     So we don't need to reprocess any blocks in the general case
-	//  - HEAD-1:   So we don't do large reorgs if our HEAD becomes an uncle
-	//  - HEAD-127: So we have a hard limit on the number of blocks reexecuted
 	if !types2.TrieDirtyDisabled {
 		triedb := ms.db.TrieDB()
 		oecStartHeight := uint64(tmtypes.GetStartBlockHeight()) // start height of oec
 
-		for _, offset := range []uint64{0, 1, TriesInMemory - 1} {
+		for offset := uint64(0) ; offset < TriesInMemory; offset++ {
 			if number := uint64(ms.version); number > offset {
 				recent := number - offset
 				if recent <= oecStartHeight || recent <= uint64(ms.startVersion) {
