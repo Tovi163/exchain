@@ -56,6 +56,10 @@ type MptStore struct {
 	startVersion int64
 }
 
+func (ms *MptStore) CommitterCommitMap(deltaMap iavl.TreeDeltaMap) (_ types.CommitID, _ iavl.TreeDeltaMap) {
+	return
+}
+
 func (ms *MptStore) GetFlatKVReadTime() int {
 	return 0
 }
@@ -182,7 +186,7 @@ func (ms *MptStore) ReverseIterator(start, end []byte) types.Iterator {
 /*
 *  implement CommitStore, CommitKVStore
  */
-func (ms *MptStore) Commit(delta *iavl.TreeDelta, bytes []byte) (types.CommitID, iavl.TreeDelta, []byte) {
+func (ms *MptStore) CommitterCommit(delta *iavl.TreeDelta) (types.CommitID, *iavl.TreeDelta) {
 	ms.version++
 
 	root, err := ms.trie.Commit(func(_ [][]byte, _ []byte, leaf []byte, parent ethcmn.Hash) error {
@@ -206,7 +210,7 @@ func (ms *MptStore) Commit(delta *iavl.TreeDelta, bytes []byte) (types.CommitID,
 	return types.CommitID {
 		Version: ms.version,
 		Hash:    root.Bytes(),
-	}, iavl.TreeDelta{}, nil
+	}, nil
 }
 
 func (ms *MptStore) LastCommitID() types.CommitID {
