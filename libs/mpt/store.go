@@ -249,10 +249,15 @@ func (ms *MptStore) PushData2Database(curHeight int64) {
 
 	triedb := ms.db.TrieDB()
 	if types2.TrieDirtyDisabled {
-		if err := triedb.Commit(curMptRoot, false, nil); err != nil {
-			panic("fail to commit mpt data: " + err.Error())
+		if curMptRoot == (ethcmn.Hash{}) || curMptRoot == types3.EmptyRootHash {
+			curMptRoot = (ethcmn.Hash{})
+		} else {
+			if err := triedb.Commit(curMptRoot, false, nil); err != nil {
+				panic("fail to commit mpt data: " + err.Error())
+			}
+			ms.SetLatestStoredBlockHeight(uint64(curHeight))
 		}
-		ms.SetLatestStoredBlockHeight(uint64(curHeight))
+
 		if ms.logger != nil {
 			ms.logger.Info("sync push data to db", "block", curHeight, "trieHash", curMptRoot)
 		}

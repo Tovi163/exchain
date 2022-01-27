@@ -49,10 +49,6 @@ func (ms multiStore) CommitterCommit(*iavl.TreeDelta) (store.CommitID, *iavl.Tre
 	panic("not implemented")
 }
 
-func (ms multiStore) CommitterCommitMap(iavl.TreeDeltaMap) (store.CommitID, iavl.TreeDeltaMap) {
-	panic("not implemented")
-}
-
 func (ms multiStore) LastCommitID() sdk.CommitID {
 	panic("not implemented")
 }
@@ -219,5 +215,9 @@ func (ms multiStore) GetCommitVersion() (int64, error) {
 }
 
 func (ms multiStore) SetStorageRootRetrieval(retrieval types.StorageRootRetrieval) {
+	panic("not implemented")
+}
+
+func (ms multiStore) CommitterCommitMap(inputDeltaMap iavl.TreeDeltaMap) (sdk.CommitID, iavl.TreeDeltaMap) {
 	panic("not implemented")
 }
