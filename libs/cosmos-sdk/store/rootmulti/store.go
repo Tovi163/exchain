@@ -955,6 +955,10 @@ func commitStores(version int64, storeMap map[types.StoreKey]types.CommitKVStore
 			continue
 		}
 
+		if !tmtypes.HigherThanMars(version) && key.Name() == mpt.StoreKey {
+			continue
+		}
+
 		si := storeInfo{}
 		si.Name = key.Name()
 		si.Core.CommitID = commitID

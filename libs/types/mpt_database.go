@@ -13,11 +13,13 @@ import (
 const (
 	FlagTrieDirtyDisabled = "trie-dirty-disabled"
 	FlagTrieCacheSize     = "trie-cache-size"
+	FlagEnableDoubleWrite = "enable-double-write"
 )
 
 var (
 	TrieDirtyDisabled      = false
 	TrieCacheSize     uint = 2048 // MB
+	EnableDoubleWrite      = false
 )
 
 //------------------------------------------

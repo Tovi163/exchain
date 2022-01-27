@@ -29,6 +29,9 @@ const (
 	StoreTypeMPT = types.StoreTypeMPT
 
 	TriesInMemory = 100
+
+	// StoreKey is string representation of the store key for mpt
+	StoreKey = "mpt"
 )
 
 var cdc = codec.New()

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/okex/exchain/libs/mpt"
 	"github.com/okex/exchain/libs/types"
 	"io/ioutil"
 	"os"
@@ -198,7 +199,6 @@ type BaseApp struct { // nolint: maligned
 	parallelTxManage *parallelTxManager
 
 	customizeModuleOnStop []sdk.CustomizeOnStop
-	mptCommitHandler sdk.MptCommitHandler // handler for mpt trie commit
 
 	chainCache *sdk.Cache
 	blockCache *sdk.Cache
@@ -295,7 +295,7 @@ func (app *BaseApp) MountStores(keys ...sdk.StoreKey) {
 		switch key.(type) {
 		case *sdk.KVStoreKey:
 			if !app.fauxMerkleMode {
-				if key.Name() == "acc" {
+				if key.Name() == mpt.StoreKey {
 					app.MountStore(key, sdk.StoreTypeMPT)
 				} else {
 					app.MountStore(key, sdk.StoreTypeIAVL)
@@ -320,7 +320,7 @@ func (app *BaseApp) MountStores(keys ...sdk.StoreKey) {
 func (app *BaseApp) MountKVStores(keys map[string]*sdk.KVStoreKey) {
 	for _, key := range keys {
 		if !app.fauxMerkleMode {
-			if key.Name() == "acc" {
+			if key.Name() == mpt.StoreKey {
 				app.MountStore(key, sdk.StoreTypeMPT)
 			} else {
 				app.MountStore(key, sdk.StoreTypeIAVL)
@@ -1060,7 +1060,7 @@ func (app *BaseApp) StopBaseApp() {
 
 	ctx := sdk.NewContext(nil, abci.Header{Height: app.LastBlockHeight(), Time: time.Now()}, false, app.logger)
 	for _, fn := range app.customizeModuleOnStop {
-		fn(ctx)
+		_ = fn(ctx)
 	}
 }
 

@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
      authtypes "github.com/okex/exchain/libs/cosmos-sdk/x/auth/types"
+	"github.com/okex/exchain/libs/mpt"
 	"io"
 	"math/big"
 	"os"
@@ -224,7 +225,7 @@ func NewOKExChainApp(
 		supply.StoreKey, mint.StoreKey, distr.StoreKey, slashing.StoreKey,
 		gov.StoreKey, params.StoreKey, upgrade.StoreKey, evidence.StoreKey,
 		evm.StoreKey, token.StoreKey, token.KeyLock, dex.StoreKey, dex.TokenPairStoreKey,
-		order.OrderStoreKey, ammswap.StoreKey, farm.StoreKey,
+		order.OrderStoreKey, ammswap.StoreKey, farm.StoreKey, mpt.StoreKey,
 	)
 
 	tkeys := sdk.NewTransientStoreKeys(params.TStoreKey)
@@ -258,7 +259,7 @@ func NewOKExChainApp(
 
 	// use custom OKExChain account for contracts
 	app.AccountKeeper = auth.NewAccountKeeper(
-		cdc, keys[auth.StoreKey], app.subspaces[auth.ModuleName], okexchain.ProtoAccount,
+		cdc, keys[auth.StoreKey],  keys[mpt.StoreKey], app.subspaces[auth.ModuleName], okexchain.ProtoAccount,
 	)
 
 	bankKeeper := bank.NewBaseKeeper(
@@ -435,8 +436,6 @@ func NewOKExChainApp(
 	app.SetGasRefundHandler(refund.NewGasRefundHandler(app.AccountKeeper, app.SupplyKeeper))
 	app.SetAccNonceHandler(NewAccNonceHandler(app.AccountKeeper))
 	app.SetParallelTxHandlers(updateFeeCollectorHandler(app.BankKeeper, app.SupplyKeeper), evmTxFeeHandler(), fixLogForParallelTxHandler(app.EvmKeeper))
-	app.AddCustomizeModuleOnStopLogic(NewEvmModuleStopLogic(app.EvmKeeper))
-	app.SetMptCommitHandler(NewMptCommitHandler(app.EvmKeeper))
 	app.SetStorageRetrievalForCMS(app.AccountKeeper.RetrievalStorageRoot)
 
 	evmtypes.SetLogger(app.Logger())
@@ -612,16 +611,4 @@ func PreRun(ctx *server.Context) error {
 		repairStateOnStart(ctx)
 	}
 	return nil
-}
-
-func NewEvmModuleStopLogic(ak *evm.Keeper) sdk.CustomizeOnStop {
-	return func(ctx sdk.Context) error {
-		return nil
-	}
-}
-
-func NewMptCommitHandler(ak *evm.Keeper) sdk.MptCommitHandler {
-	return func(ctx sdk.Context) {
-		return
-	}
 }
