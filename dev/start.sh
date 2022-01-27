@@ -21,7 +21,7 @@ killbyname() {
 
 
 run() {
-    LOG_LEVEL=main:info,iavl:debug,*:error,state:info,provider:info
+    LOG_LEVEL=main:info,*:error,evm:info
 
     exchaind start --pruning=nothing --rpc.unsafe \
       --local-rpc-port 26657 \
@@ -37,7 +37,7 @@ run() {
       --iavl-output-modules evm=1,acc=0 \
       --trace --home $HOME_SERVER --chain-id $CHAINID \
       --elapsed Round=1,CommitRound=1,Produce=1 \
-      --rest.laddr "tcp://localhost:8545" > oec.txt 2>&1 &
+      --rest.laddr "tcp://0.0.0.0:8545" > oec.txt 2>&1 &
 
 # --iavl-commit-interval-height \
 # --iavl-enable-async-commit \
@@ -99,6 +99,9 @@ cat $HOME_SERVER/config/genesis.json | jq '.app_state["mint"]["params"]["mint_de
 # Enable EVM
 
 if [ "$(uname -s)" == "Darwin" ]; then
+    sed -i "" 's/create_empty_blocks = true/create_empty_blocks = false/' $HOME_SERVER/config/config.toml
+    sed -i "" 's/size = 10000/size = 200000/' $HOME_SERVER/config/config.toml
+    sed -i "" 's/max_tx_num_per_block = 300/max_tx_num_per_block = 3000/' $HOME_SERVER/config/config.toml
     sed -i "" 's/"enable_call": false/"enable_call": true/' $HOME_SERVER/config/genesis.json
     sed -i "" 's/"enable_create": false/"enable_create": true/' $HOME_SERVER/config/genesis.json
     sed -i "" 's/"enable_contract_blocked_list": false/"enable_contract_blocked_list": true/' $HOME_SERVER/config/genesis.json
