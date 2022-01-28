@@ -27,8 +27,8 @@ import (
 	"github.com/okex/exchain/libs/tendermint/state/txindex/null"
 	"github.com/okex/exchain/libs/tendermint/store"
 	"github.com/okex/exchain/libs/tendermint/types"
-	"github.com/spf13/viper"
 	dbm "github.com/okex/exchain/libs/tm-db"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -74,7 +74,6 @@ func repairStateOnStart(ctx *server.Context) {
 func RepairState(ctx *server.Context, onStart bool) {
 	sm.SetIgnoreSmbCheck(true)
 	iavl.SetIgnoreVersionCheck(true)
-	sdk.MptAsnyc = false
 
 	// load latest block height
 	dataDir := filepath.Join(ctx.Config.RootDir, "data")
@@ -111,7 +110,7 @@ func RepairState(ctx *server.Context, onStart bool) {
 	if startVersion == 0 {
 		if types.HigherThanMars(commitVersion) {
 			lastMptVersion := int64(repairApp.EvmKeeper.GetLatestStoredBlockHeight())
-			fmt.Println("LastMptVersion", lastMptVersion, "CommitVersion", commitVersion)
+			log.Println("LastMptVersion", lastMptVersion, "CommitVersion", commitVersion)
 			if lastMptVersion < commitVersion {
 				commitVersion = lastMptVersion
 			}
@@ -172,7 +171,7 @@ func doRepair(ctx *server.Context, state sm.State, stateStoreDB dbm.DB,
 	blockExec.SetIsAsyncDeliverTx(viper.GetBool(sm.FlagParalleledTx))
 	blockExec.SetEventBus(eventBus)
 	global.SetGlobalHeight(startHeight + 1)
-	fmt.Println("ready do repair", "start", startHeight+1, "end", latestHeight)
+	log.Println("ready do repair", "start", startHeight+1, "end", latestHeight)
 	for height := startHeight + 1; height <= latestHeight; height++ {
 		repairBlock, repairBlockMeta := loadBlock(height, dataDir)
 		state, _, err = blockExec.ApplyBlock(state, repairBlockMeta.BlockID, repairBlock)

@@ -118,7 +118,7 @@ func NewKeeper(
 
 	k.OpenTrie()
 	k.EvmStateDb = types.NewCommitStateDB(k.GenerateCSDBParams())
-	k.asyncCommit()
+	k.asyncCommit(logger)
 
 	return k
 }

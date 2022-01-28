@@ -7,8 +7,10 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
 	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
+	"github.com/okex/exchain/libs/tendermint/libs/log"
 	tmtypes "github.com/okex/exchain/libs/tendermint/types"
 	types2 "github.com/okex/exchain/x/evm/types"
+	"time"
 )
 
 var (
@@ -91,7 +93,7 @@ func (k *Keeper) OnStop(ctx sdk.Context) error {
 
 		latestVersion := uint64(ctx.BlockHeight())
 		offset := uint64(TriesInMemory)
-		for ; offset > 0 ; offset-- {
+		for ; offset > 0; offset-- {
 			if latestVersion > offset {
 				version := latestVersion - offset
 				if version <= oecStartHeight || version <= k.startHeight {
@@ -120,7 +122,7 @@ func (k *Keeper) OnStop(ctx sdk.Context) error {
 	return nil
 }
 
-func (k *Keeper) PushData2Database(height int64) {
+func (k *Keeper) PushData2Database(height int64, log log.Logger) {
 	curHeight := height
 	curMptRoot := k.GetMptRootHash(uint64(curHeight))
 
@@ -130,7 +132,7 @@ func (k *Keeper) PushData2Database(height int64) {
 			panic("fail to commit mpt data: " + err.Error())
 		}
 		k.SetLatestStoredBlockHeight(uint64(curHeight))
-		fmt.Println("sync push data to db", "block", curHeight, "trieHash", curMptRoot)
+		log.Info("sync push data to db", "block", curHeight, "trieHash", curMptRoot)
 	} else {
 		// Full but not archive node, do proper garbage collection
 		triedb.Reference(curMptRoot, ethcmn.Hash{}) // metadata reference to keep trie alive
@@ -158,7 +160,7 @@ func (k *Keeper) PushData2Database(height int64) {
 			// diff sidechain. Suspend committing until this operation is completed.
 			chRoot := k.GetMptRootHash(uint64(chosen))
 			if chRoot == (ethcmn.Hash{}) {
-				//k.Logger(ctx).Debug("Reorg in progress, trie commit postponed", "number", chosen)
+				log.Debug("Reorg in progress, trie commit postponed", "number", chosen)
 			} else {
 				// Flush an entire trie and restart the counters, it's not a thread safe process,
 				// cannot use a go thread to run, or it will lead 'fatal error: concurrent map read and map write' error
@@ -166,7 +168,7 @@ func (k *Keeper) PushData2Database(height int64) {
 					panic("fail to commit mpt data: " + err.Error())
 				}
 				k.SetLatestStoredBlockHeight(uint64(chosen))
-				fmt.Println("async push data to db", "block", chosen, "trieHash", chRoot)
+				log.Info("async push data to db", "block", chosen, "trieHash", chRoot)
 			}
 
 			// Garbage collect anything below our required write retention
@@ -207,15 +209,14 @@ func (k *Keeper) Commit(ctx sdk.Context) {
 func (k *Keeper) AddAsyncTask(height int64) {
 	k.asyncChain <- height
 }
-func (k *Keeper) asyncCommit() {
+func (k *Keeper) asyncCommit(l log.Logger) {
 	go func() {
 		for {
 			select {
 			case height := <-k.asyncChain:
-				fmt.Println("ready to push", height)
-				k.PushData2Database(height)
-				fmt.Println("end to push", height)
-
+				ts := time.Now()
+				k.PushData2Database(height, l)
+				fmt.Println("end to push", height, time.Now().Sub(ts).Seconds())
 			}
 		}
 	}()
