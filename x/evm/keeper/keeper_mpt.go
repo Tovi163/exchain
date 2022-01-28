@@ -91,7 +91,7 @@ func (k *Keeper) OnStop(ctx sdk.Context) error {
 
 		latestVersion := uint64(ctx.BlockHeight())
 		offset := uint64(TriesInMemory)
-		for ; offset > 0; offset-- {
+		for ; offset > 0 ; offset-- {
 			if latestVersion > offset {
 				version := latestVersion - offset
 				if version <= oecStartHeight || version <= k.startHeight {

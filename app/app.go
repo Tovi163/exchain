@@ -2,9 +2,7 @@ package app
 
 import (
 	"fmt"
-	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
-	authtypes "github.com/okex/exchain/libs/cosmos-sdk/x/auth/types"
-	"github.com/spf13/viper"
+     authtypes "github.com/okex/exchain/libs/cosmos-sdk/x/auth/types"
 	"io"
 	"math/big"
 	"os"
@@ -19,6 +17,7 @@ import (
 	"github.com/okex/exchain/libs/cosmos-sdk/codec"
 	"github.com/okex/exchain/libs/cosmos-sdk/server"
 	"github.com/okex/exchain/libs/cosmos-sdk/simapp"
+	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
 	"github.com/okex/exchain/libs/cosmos-sdk/types/module"
 	"github.com/okex/exchain/libs/cosmos-sdk/version"
 	"github.com/okex/exchain/libs/cosmos-sdk/x/auth"
@@ -32,7 +31,6 @@ import (
 	"github.com/okex/exchain/libs/tendermint/libs/log"
 	tmos "github.com/okex/exchain/libs/tendermint/libs/os"
 	tmtypes "github.com/okex/exchain/libs/tendermint/types"
-	dbm "github.com/okex/exchain/libs/tm-db"
 	"github.com/okex/exchain/x/ammswap"
 	"github.com/okex/exchain/x/common/analyzer"
 	commonversion "github.com/okex/exchain/x/common/version"
@@ -54,6 +52,8 @@ import (
 	"github.com/okex/exchain/x/slashing"
 	"github.com/okex/exchain/x/staking"
 	"github.com/okex/exchain/x/token"
+	"github.com/spf13/viper"
+	dbm "github.com/okex/exchain/libs/tm-db"
 )
 
 func init() {
@@ -189,7 +189,7 @@ func NewOKExChainApp(
 		"MercuryHeight", tmtypes.GetMercuryHeight(),
 		"VenusHeight", tmtypes.GetVenusHeight(),
 		"MarsHeight", tmtypes.GetMarsHeight(),
-	)
+		)
 	onceLog.Do(func() {
 		iavllog := logger.With("module", "iavl")
 		logFunc := func(level int, format string, args ...interface{}) {
@@ -607,10 +607,9 @@ func PreRun(ctx *server.Context) error {
 		return err
 	}
 	// repair state on start
-	if viper.GetBool(FlagEnableRepairState) { //TODO:need delete?
+	if viper.GetBool(FlagEnableRepairState) {
 		repairStateOnStart(ctx)
 	}
-
 	return nil
 }
 
@@ -625,13 +624,11 @@ func NewEvmModuleStopLogic(ak *evm.Keeper) sdk.CustomizeOnStop {
 
 func NewMptCommitHandler(ak *evm.Keeper) sdk.MptCommitHandler {
 	return func(ctx sdk.Context) {
-		if tmtypes.HigherThanMars(ctx.BlockHeight()) {
+		if tmtypes.HigherThanMars(ctx.BlockHeight()) || sdk.EnableDoubleWrite {
 			if sdk.MptAsnyc {
 				ak.AddAsyncTask(ctx.BlockHeight())
 			} else {
-				if tmtypes.HigherThanMars(ctx.BlockHeight()) || sdk.EnableDoubleWrite {
-					ak.PushData2Database(ctx.BlockHeight())
-				}
+				ak.PushData2Database(ctx.BlockHeight())
 			}
 		}
 	}

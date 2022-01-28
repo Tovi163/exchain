@@ -57,7 +57,6 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 			)
 		}
 	}
-
 	if !bytes.Equal(block.ConsensusHash, state.ConsensusParams.Hash()) {
 		return fmt.Errorf("wrong Block.Header.ConsensusHash.  Expected %X, got %v",
 			state.ConsensusParams.Hash(),

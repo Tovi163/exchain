@@ -27,8 +27,8 @@ import (
 	"github.com/okex/exchain/libs/tendermint/state/txindex/null"
 	"github.com/okex/exchain/libs/tendermint/store"
 	"github.com/okex/exchain/libs/tendermint/types"
-	dbm "github.com/okex/exchain/libs/tm-db"
 	"github.com/spf13/viper"
+	dbm "github.com/okex/exchain/libs/tm-db"
 )
 
 const (
@@ -172,9 +172,7 @@ func doRepair(ctx *server.Context, state sm.State, stateStoreDB dbm.DB,
 	blockExec.SetIsAsyncDeliverTx(viper.GetBool(sm.FlagParalleledTx))
 	blockExec.SetEventBus(eventBus)
 	global.SetGlobalHeight(startHeight + 1)
-
 	fmt.Println("ready do repair", "start", startHeight+1, "end", latestHeight)
-
 	for height := startHeight + 1; height <= latestHeight; height++ {
 		repairBlock, repairBlockMeta := loadBlock(height, dataDir)
 		state, _, err = blockExec.ApplyBlock(state, repairBlockMeta.BlockID, repairBlock)
