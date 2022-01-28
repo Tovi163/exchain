@@ -8,9 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb/leveldb"
 	"github.com/ethereum/go-ethereum/ethdb/memorydb"
 	"github.com/ethereum/go-ethereum/trie"
-	//"github.com/okex/exchain/libs/cosmos-sdk/client/flags"
 	"github.com/spf13/viper"
-	dbm "github.com/tendermint/tm-db"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -24,6 +22,7 @@ var (
 	TrieDirtyDisabled      = false
 	TrieCacheSize     uint = 2048 // MB
 	MptAsnyc               = true
+	EnableDoubleWrite      = false
 )
 
 const (
@@ -33,6 +32,7 @@ const (
 	FlagDBBackend         = "db_backend"
 	FlagTrieDirtyDisabled = "trie-dirty-disabled"
 	FlagTrieCacheSize     = "trie-cache-size"
+	FlagEnableDoubleWrite = "enable-double-write"
 )
 
 func InstanceOfEvmStore(homeDir string) ethstate.Database {
@@ -41,7 +41,7 @@ func InstanceOfEvmStore(homeDir string) ethstate.Database {
 
 		backend := viper.GetString(FlagDBBackend)
 		if backend == "" {
-			backend = string(dbm.GoLevelDBBackend)
+			backend = string(GoLevelDBBackend)
 		}
 
 		kvstore, e := CreateKvDB(EvmSpace, BackendType(backend), path)

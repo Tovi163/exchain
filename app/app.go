@@ -2,8 +2,8 @@ package app
 
 import (
 	"fmt"
+	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
 	authtypes "github.com/okex/exchain/libs/cosmos-sdk/x/auth/types"
-	"github.com/spf13/viper"
 	"io"
 	"math/big"
 	"os"
@@ -18,7 +18,6 @@ import (
 	"github.com/okex/exchain/libs/cosmos-sdk/codec"
 	"github.com/okex/exchain/libs/cosmos-sdk/server"
 	"github.com/okex/exchain/libs/cosmos-sdk/simapp"
-	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
 	"github.com/okex/exchain/libs/cosmos-sdk/types/module"
 	"github.com/okex/exchain/libs/cosmos-sdk/version"
 	"github.com/okex/exchain/libs/cosmos-sdk/x/auth"
@@ -32,6 +31,7 @@ import (
 	"github.com/okex/exchain/libs/tendermint/libs/log"
 	tmos "github.com/okex/exchain/libs/tendermint/libs/os"
 	tmtypes "github.com/okex/exchain/libs/tendermint/types"
+	dbm "github.com/okex/exchain/libs/tm-db"
 	"github.com/okex/exchain/x/ammswap"
 	"github.com/okex/exchain/x/common/analyzer"
 	commonversion "github.com/okex/exchain/x/common/version"
@@ -53,7 +53,6 @@ import (
 	"github.com/okex/exchain/x/slashing"
 	"github.com/okex/exchain/x/staking"
 	"github.com/okex/exchain/x/token"
-	dbm "github.com/tendermint/tm-db"
 )
 
 func init() {
@@ -616,7 +615,7 @@ func PreRun(ctx *server.Context) error {
 
 func NewEvmModuleStopLogic(ak *evm.Keeper) sdk.CustomizeOnStop {
 	return func(ctx sdk.Context) error {
-		if tmtypes.HigherThanMars(ctx.BlockHeight()) {
+		if tmtypes.HigherThanMars(ctx.BlockHeight()) || sdk.EnableDoubleWrite {
 			return ak.OnStop(ctx)
 		}
 		return nil
@@ -629,9 +628,10 @@ func NewMptCommitHandler(ak *evm.Keeper) sdk.MptCommitHandler {
 			if sdk.MptAsnyc {
 				ak.AddAsyncTask(ctx.BlockHeight())
 			} else {
-				ak.PushData2Database(ctx.BlockHeight())
+				if tmtypes.HigherThanMars(ctx.BlockHeight()) || sdk.EnableDoubleWrite {
+					ak.PushData2Database(ctx)
+				}
 			}
-
 		}
 	}
 }

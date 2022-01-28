@@ -2,6 +2,7 @@ package keeper
 
 import (
 	"encoding/binary"
+	"github.com/VictoriaMetrics/fastcache"
 	"github.com/ethereum/go-ethereum/common/prque"
 	ethstate "github.com/ethereum/go-ethereum/core/state"
 	"github.com/okex/exchain/libs/cosmos-sdk/client/flags"
@@ -60,6 +61,7 @@ type Keeper struct {
 	rootTrie    ethstate.Trie
 	startHeight uint64
 	triegc      *prque.Prque
+	stateCache  *fastcache.Cache
 
 	EvmStateDb     *types.CommitStateDB
 	UpdatedAccount []ethcmn.Address
@@ -106,6 +108,7 @@ func NewKeeper(
 
 		db:             sdk.InstanceOfEvmStore(viper.GetString(flags.FlagHome)),
 		triegc:         prque.New(nil),
+		stateCache:     fastcache.New(2 * 1024 * 1024 * 1024),
 		UpdatedAccount: make([]ethcmn.Address, 0),
 		mptCommitMu:    sync.Mutex{},
 		asyncChain:     make(chan int64, 1000),
@@ -140,6 +143,7 @@ func NewSimulateKeeper(
 
 		db:             sdk.InstanceOfEvmStore(viper.GetString(flags.FlagHome)),
 		triegc:         prque.New(nil),
+		stateCache:     fastcache.New(2 * 1024 * 1024 * 1024),
 		UpdatedAccount: make([]ethcmn.Address, 0),
 	}
 
@@ -170,8 +174,9 @@ func (k Keeper) GenerateCSDBParams() types.CommitStateDBParams {
 		Ada:           k.Ada,
 		Cdc:           k.cdc,
 
-		DB:   k.db,
-		Trie: k.rootTrie,
+		DB:         k.db,
+		Trie:       k.rootTrie,
+		StateCache: k.stateCache,
 	}
 }
 
@@ -183,8 +188,9 @@ func (k Keeper) GeneratePureCSDBParams() types.CommitStateDBParams {
 		Ada:      k.Ada,
 		Cdc:      k.cdc,
 
-		DB:   k.db,
-		Trie: k.rootTrie,
+		DB:         k.db,
+		Trie:       k.rootTrie,
+		StateCache: k.stateCache,
 	}
 }
 

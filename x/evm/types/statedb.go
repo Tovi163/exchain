@@ -2,6 +2,8 @@ package types
 
 import (
 	"fmt"
+	"github.com/VictoriaMetrics/fastcache"
+	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/okex/exchain/libs/cosmos-sdk/codec"
 	tmtypes "github.com/okex/exchain/libs/tendermint/types"
 	"math/big"
@@ -44,8 +46,9 @@ type CommitStateDBParams struct {
 	// Amino codec
 	Cdc *codec.Codec
 
-	DB ethstate.Database
-	Trie ethstate.Trie
+	DB         ethstate.Database
+	Trie       ethstate.Trie
+	StateCache *fastcache.Cache
 }
 
 type Watcher interface {
@@ -72,8 +75,9 @@ type CacheCode struct {
 // TODO: This implementation is subject to change in regards to its statefull
 // manner. In otherwords, how this relates to the keeper in this module.
 type CommitStateDB struct {
-	db   ethstate.Database
-	trie ethstate.Trie // only storage addr -> storageMptRoot in this mpt tree
+	db         ethstate.Database
+	trie       ethstate.Trie // only storage addr -> storageMptRoot in this mpt tree
+	StateCache *fastcache.Cache
 
 	// TODO: We need to store the context as part of the structure itself opposed
 	// to being passed as a parameter (as it should be) in order to implement the
@@ -122,7 +126,7 @@ type CommitStateDB struct {
 	// mutex for state deep copying
 	lock sync.Mutex
 
-	params *Params
+	params    *Params
 	codeCache map[ethcmn.Address]CacheCode
 	dbAdapter DbAdapter
 
@@ -157,7 +161,7 @@ func (d DefaultPrefixDb) NewStore(parent types.KVStore, Prefix []byte) StoreProx
 // key/value space matters in determining the merkle root.
 func NewCommitStateDB(csdbParams CommitStateDBParams) *CommitStateDB {
 	csdb := &CommitStateDB{
-		db: csdbParams.DB,
+		db:   csdbParams.DB,
 		trie: csdbParams.Trie,
 
 		storeKey:      csdbParams.StoreKey,
@@ -166,6 +170,7 @@ func NewCommitStateDB(csdbParams CommitStateDBParams) *CommitStateDB {
 		supplyKeeper:  csdbParams.SupplyKeeper,
 		bankKeeper:    csdbParams.BankKeeper,
 		Watcher:       csdbParams.Watcher,
+		cdc:           csdbParams.Cdc,
 
 		stateObjects:        make(map[ethcmn.Address]*stateObject),
 		stateObjectsPending: make(map[ethcmn.Address]struct{}),
@@ -179,6 +184,7 @@ func NewCommitStateDB(csdbParams CommitStateDBParams) *CommitStateDB {
 		codeCache:           make(map[ethcmn.Address]CacheCode, 0),
 		dbAdapter:           csdbParams.Ada,
 		updatedAccount:      make(map[ethcmn.Address]struct{}),
+		StateCache:          csdbParams.StateCache,
 	}
 
 	return csdb
@@ -733,13 +739,40 @@ func (csdb *CommitStateDB) Commit(deleteEmptyObjects bool) (ethcmn.Hash, error) 
 	if !tmtypes.HigherThanMars(csdb.ctx.BlockHeight()) {
 		csdb.IntermediateRoot(deleteEmptyObjects)
 
-		// Commit objects to the trie, measuring the elapsed time
-		for addr := range csdb.stateObjectsDirty {
-			if so := csdb.stateObjects[addr]; !so.deleted {
-				// Write any contract code associated with the state object
-				if so.code != nil && so.dirtyCode {
-					so.commitCode()
-					so.dirtyCode = false
+		if sdk.EnableDoubleWrite {
+			// Commit objects to the trie, measuring the elapsed time
+			codeWriter := csdb.db.TrieDB().DiskDB().NewBatch()
+			for addr := range csdb.stateObjectsDirty {
+				if obj := csdb.stateObjects[addr]; !obj.deleted {
+					// Write any contract code associated with the state object
+					if obj.code != nil && obj.dirtyCode {
+						obj.commitCode()
+
+						rawdb.WriteCode(codeWriter, ethcmn.BytesToHash(obj.CodeHash()), obj.code)
+						obj.dirtyCode = false
+					}
+
+					// Write any storage changes in the state object to its storage trie
+					if err := obj.CommitTrie(csdb.db); err != nil {
+						return ethcmn.Hash{}, err
+					}
+				}
+			}
+
+			if codeWriter.ValueSize() > 0 {
+				if err := codeWriter.Write(); err != nil {
+					csdb.SetError(fmt.Errorf("failed to commit dirty codes: %s", err.Error()))
+				}
+			}
+		} else {
+			// Commit objects to the trie, measuring the elapsed time
+			for addr := range csdb.stateObjectsDirty {
+				if so := csdb.stateObjects[addr]; !so.deleted {
+					// Write any contract code associated with the state object
+					if so.code != nil && so.dirtyCode {
+						so.commitCode()
+						so.dirtyCode = false
+					}
 				}
 			}
 		}
@@ -796,7 +829,7 @@ func (csdb *CommitStateDB) IntermediateRoot(deleteEmptyObjects bool) ethcmn.Hash
 	if !tmtypes.HigherThanMars(csdb.ctx.BlockHeight()) {
 		for addr := range csdb.stateObjectsPending {
 			if obj := csdb.stateObjects[addr]; !obj.deleted {
-				obj.commitState()
+				obj.commitState(csdb.db)
 			}
 		}
 	} else {
@@ -857,7 +890,7 @@ func (csdb *CommitStateDB) updateStateObject(so *stateObject) error {
 		}
 	}
 
-	if tmtypes.HigherThanMars(csdb.ctx.BlockHeight()) {
+	if tmtypes.HigherThanMars(csdb.ctx.BlockHeight()) || sdk.EnableDoubleWrite {
 		csdb.UpdateAccountStorageInfo(so)
 	}
 
@@ -869,7 +902,7 @@ func (csdb *CommitStateDB) deleteStateObject(so *stateObject) {
 	so.deleted = true
 	csdb.accountKeeper.RemoveAccount(csdb.ctx, so.account)
 
-	if tmtypes.HigherThanMars(csdb.ctx.BlockHeight()) {
+	if tmtypes.HigherThanMars(csdb.ctx.BlockHeight()) || sdk.EnableDoubleWrite {
 		csdb.DeleteAccountStorageInfo(so)
 	}
 }
@@ -1315,7 +1348,7 @@ func (csdb *CommitStateDB) InsertContractMethodBlockedList(contractList BlockedC
 	for i := 0; i < len(contractList); i++ {
 		bc := csdb.GetContractMethodBlockedByAddress(contractList[i].Address)
 		if bc != nil {
-			result,err := bc.BlockMethods.InsertContractMethods(contractList[i].BlockMethods)
+			result, err := bc.BlockMethods.InsertContractMethods(contractList[i].BlockMethods)
 			if err != nil {
 				return err
 			}
@@ -1334,9 +1367,9 @@ func (csdb *CommitStateDB) DeleteContractMethodBlockedList(contractList BlockedC
 	for i := 0; i < len(contractList); i++ {
 		bc := csdb.GetContractMethodBlockedByAddress(contractList[i].Address)
 		if bc != nil {
-			result,err := bc.BlockMethods.DeleteContractMethodMap(contractList[i].BlockMethods)
+			result, err := bc.BlockMethods.DeleteContractMethodMap(contractList[i].BlockMethods)
 			if err != nil {
-				return ErrBlockedContractMethodIsNotExist(contractList[i].Address,err)
+				return ErrBlockedContractMethodIsNotExist(contractList[i].Address, err)
 			}
 			bc.BlockMethods = result
 			//if block contract method delete empty then remove contract from blocklist.
@@ -1350,7 +1383,7 @@ func (csdb *CommitStateDB) DeleteContractMethodBlockedList(contractList BlockedC
 				csdb.SetContractMethodBlocked(*bc)
 			}
 		} else {
-			return ErrBlockedContractMethodIsNotExist(contractList[i].Address,ErrorContractMethodBlockedIsNotExist)
+			return ErrBlockedContractMethodIsNotExist(contractList[i].Address, ErrorContractMethodBlockedIsNotExist)
 		}
 	}
 	return nil
