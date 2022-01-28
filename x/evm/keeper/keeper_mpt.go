@@ -178,8 +178,9 @@ func (k *Keeper) PushData2Database(height int64) {
 				}
 				triedb.Dereference(root.(ethcmn.Hash))
 			}
+
+			k.mptCommitMu.Unlock()
 		}
-		k.mptCommitMu.Unlock()
 	}
 }
 
