@@ -209,14 +209,14 @@ func (k *Keeper) Commit(ctx sdk.Context) {
 func (k *Keeper) AddAsyncTask(height int64) {
 	k.asyncChain <- height
 }
-func (k *Keeper) asyncCommit(l log.Logger) {
+func (k *Keeper) asyncCommit(log log.Logger) {
 	go func() {
 		for {
 			select {
 			case height := <-k.asyncChain:
 				ts := time.Now()
-				k.PushData2Database(height, l)
-				fmt.Println("end to push", height, time.Now().Sub(ts).Seconds())
+				k.PushData2Database(height, log)
+				log.Info("end to push", height, time.Now().Sub(ts).Seconds())
 			}
 		}
 	}()
