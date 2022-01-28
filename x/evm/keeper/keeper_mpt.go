@@ -16,7 +16,7 @@ var (
 	KeyPrefixLatestStoredHeight = []byte{0x02}
 )
 
-const TriesInMemory = 100
+const TriesInMemory = 64
 
 // GetMptRootHash gets root mpt hash from block height
 func (k *Keeper) GetMptRootHash(height uint64) ethcmn.Hash {
@@ -91,7 +91,7 @@ func (k *Keeper) OnStop(ctx sdk.Context) error {
 
 		latestVersion := uint64(ctx.BlockHeight())
 		offset := uint64(TriesInMemory)
-		for ; offset > 0 ; offset-- {
+		for ; offset > 0; offset-- {
 			if latestVersion > offset {
 				version := latestVersion - offset
 				if version <= oecStartHeight || version <= k.startHeight {
@@ -120,8 +120,8 @@ func (k *Keeper) OnStop(ctx sdk.Context) error {
 	return nil
 }
 
-func (k *Keeper) PushData2Database(ctx sdk.Context) {
-	curHeight := ctx.BlockHeight()
+func (k *Keeper) PushData2Database(height int64) {
+	curHeight := height
 	curMptRoot := k.GetMptRootHash(uint64(curHeight))
 
 	triedb := k.db.TrieDB()
@@ -130,11 +130,11 @@ func (k *Keeper) PushData2Database(ctx sdk.Context) {
 			panic("fail to commit mpt data: " + err.Error())
 		}
 		k.SetLatestStoredBlockHeight(uint64(curHeight))
-		k.Logger(ctx).Info("sync push data to db", "block", curHeight, "trieHash", curMptRoot)
+		fmt.Println("sync push data to db", "block", curHeight, "trieHash", curMptRoot)
 	} else {
 		// Full but not archive node, do proper garbage collection
 		triedb.Reference(curMptRoot, ethcmn.Hash{}) // metadata reference to keep trie alive
-		k.triegc.Push(curMptRoot, -int64(curHeight))
+		k.triegc.Push(curMptRoot, -curHeight)
 
 		if curHeight > TriesInMemory {
 			// If we exceeded our memory allowance, flush matured singleton nodes to disk
@@ -153,11 +153,12 @@ func (k *Keeper) PushData2Database(ctx sdk.Context) {
 				return
 			}
 
+			k.mptCommitMu.Lock()
 			// If the header is missing (canonical chain behind), we're reorging a low
 			// diff sidechain. Suspend committing until this operation is completed.
 			chRoot := k.GetMptRootHash(uint64(chosen))
 			if chRoot == (ethcmn.Hash{}) {
-				k.Logger(ctx).Debug("Reorg in progress, trie commit postponed", "number", chosen)
+				//k.Logger(ctx).Debug("Reorg in progress, trie commit postponed", "number", chosen)
 			} else {
 				// Flush an entire trie and restart the counters, it's not a thread safe process,
 				// cannot use a go thread to run, or it will lead 'fatal error: concurrent map read and map write' error
@@ -165,23 +166,26 @@ func (k *Keeper) PushData2Database(ctx sdk.Context) {
 					panic("fail to commit mpt data: " + err.Error())
 				}
 				k.SetLatestStoredBlockHeight(uint64(chosen))
-				k.Logger(ctx).Info("async push data to db", "block", chosen, "trieHash", chRoot)
+				fmt.Println("async push data to db", "block", chosen, "trieHash", chRoot)
 			}
 
 			// Garbage collect anything below our required write retention
 			for !k.triegc.Empty() {
 				root, number := k.triegc.Pop()
-				if int64(-number) > chosen {
+				if -number > chosen {
 					k.triegc.Push(root, number)
 					break
 				}
 				triedb.Dereference(root.(ethcmn.Hash))
 			}
 		}
+		k.mptCommitMu.Unlock()
 	}
 }
 
 func (k *Keeper) Commit(ctx sdk.Context) {
+	k.mptCommitMu.Lock()
+	defer k.mptCommitMu.Unlock()
 	// commit contract storage mpt trie
 	k.EvmStateDb.WithContext(ctx).Commit(true)
 
@@ -197,4 +201,22 @@ func (k *Keeper) Commit(ctx sdk.Context) {
 		return nil
 	})
 	k.SetMptRootHash(uint64(ctx.BlockHeight()), root)
+}
+
+func (k *Keeper) AddAsyncTask(height int64) {
+	k.asyncChain <- height
+}
+func (k *Keeper) asyncCommit() {
+	go func() {
+		for {
+			select {
+			case height := <-k.asyncChain:
+				fmt.Println("ready to push", height)
+				k.PushData2Database(height)
+				fmt.Println("end to push", height)
+
+			}
+		}
+	}()
+
 }

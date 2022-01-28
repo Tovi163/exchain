@@ -4,6 +4,7 @@ import (
 	"fmt"
 	sdk "github.com/okex/exchain/libs/cosmos-sdk/types"
 	authtypes "github.com/okex/exchain/libs/cosmos-sdk/x/auth/types"
+	"github.com/spf13/viper"
 	"io"
 	"math/big"
 	"os"
@@ -629,7 +630,7 @@ func NewMptCommitHandler(ak *evm.Keeper) sdk.MptCommitHandler {
 				ak.AddAsyncTask(ctx.BlockHeight())
 			} else {
 				if tmtypes.HigherThanMars(ctx.BlockHeight()) || sdk.EnableDoubleWrite {
-					ak.PushData2Database(ctx)
+					ak.PushData2Database(ctx.BlockHeight())
 				}
 			}
 		}
