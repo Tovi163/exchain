@@ -502,8 +502,9 @@ func (api *PublicEthereumAPI) GetTransactionCount(address common.Address, blockN
 	}
 
 	n := hexutil.Uint64(nonce)
-	api.logger.Error("eth_getTransactionCount", "addr", address, "nonce", n)
-
+	if address.String() == "0x115E24841371EdBdF0175b1B60F4E7520fab34B2" {
+		api.logger.Error("eth_getTransactionCount", "nonce", n)
+	}
 	return &n, nil
 }
 
