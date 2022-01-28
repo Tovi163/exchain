@@ -216,7 +216,7 @@ func (k *Keeper) asyncCommit(log log.Logger) {
 			case height := <-k.asyncChain:
 				ts := time.Now()
 				k.PushData2Database(height, log)
-				log.Info("end to push", height, time.Now().Sub(ts).Seconds())
+				log.Info("end to push", "height", height, "ms", time.Now().Sub(ts).Milliseconds())
 			}
 		}
 	}()
