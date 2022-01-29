@@ -2,6 +2,8 @@ package app
 
 import (
 	"fmt"
+	"github.com/okex/exchain/app/utils/sanity"
+	"github.com/spf13/cobra"
 	"io"
 	"math/big"
 	"os"
@@ -31,6 +33,7 @@ import (
 	"github.com/okex/exchain/libs/tendermint/libs/log"
 	tmos "github.com/okex/exchain/libs/tendermint/libs/os"
 	tmtypes "github.com/okex/exchain/libs/tendermint/types"
+	dbm "github.com/okex/exchain/libs/tm-db"
 	"github.com/okex/exchain/x/ammswap"
 	"github.com/okex/exchain/x/common/analyzer"
 	commonversion "github.com/okex/exchain/x/common/version"
@@ -53,7 +56,6 @@ import (
 	"github.com/okex/exchain/x/staking"
 	"github.com/okex/exchain/x/token"
 	"github.com/spf13/viper"
-	dbm "github.com/okex/exchain/libs/tm-db"
 )
 
 func init() {
@@ -584,9 +586,15 @@ func NewAccHandler(ak auth.AccountKeeper) sdk.AccHandler {
 	}
 }
 
-func PreRun(ctx *server.Context) error {
+func PreRun(ctx *server.Context, cmd *cobra.Command) error {
 	// set the dynamic config
 	appconfig.RegisterDynamicConfig(ctx.Logger.With("module", "config"))
+
+	// check start flag conflicts
+	err := sanity.CheckStart(cmd)
+	if err != nil {
+		return err
+	}
 
 	// set config by node mode
 	setNodeConfig(ctx)
@@ -595,7 +603,7 @@ func PreRun(ctx *server.Context) error {
 	appconfig.PprofDownload(ctx)
 
 	// pruning options
-	_, err := server.GetPruningOptionsFromFlags()
+	_, err = server.GetPruningOptionsFromFlags()
 	if err != nil {
 		return err
 	}
