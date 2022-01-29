@@ -156,6 +156,7 @@ func (k *Keeper) PushData2Database(height int64, log log.Logger) {
 			}
 
 			k.mptCommitMu.Lock()
+			fmt.Printf("lock---")
 			// If the header is missing (canonical chain behind), we're reorging a low
 			// diff sidechain. Suspend committing until this operation is completed.
 			chRoot := k.GetMptRootHash(uint64(chosen))
@@ -182,6 +183,7 @@ func (k *Keeper) PushData2Database(height int64, log log.Logger) {
 			}
 
 			k.mptCommitMu.Unlock()
+			fmt.Println("unlock--")
 		}
 	}
 }
@@ -196,7 +198,7 @@ func (k *Keeper) Commit(ctx sdk.Context) {
 
 	// The onleaf func is called _serially_, so we can reuse the same account
 	// for unmarshalling every time.
-	fmt.Printf("193--2")
+	fmt.Println("193--2")
 	var storageRoot ethcmn.Hash
 	root, _ := k.rootTrie.Commit(func(_ [][]byte, _ []byte, leaf []byte, parent ethcmn.Hash) error {
 		storageRoot.SetBytes(leaf)
@@ -206,7 +208,7 @@ func (k *Keeper) Commit(ctx sdk.Context) {
 
 		return nil
 	})
-	fmt.Printf("193---3")
+	fmt.Println("193---3")
 	k.SetMptRootHash(uint64(ctx.BlockHeight()), root)
 }
 
