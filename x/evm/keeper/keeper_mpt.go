@@ -187,13 +187,16 @@ func (k *Keeper) PushData2Database(height int64, log log.Logger) {
 }
 
 func (k *Keeper) Commit(ctx sdk.Context) {
+	fmt.Println("193--9")
 	k.mptCommitMu.Lock()
 	defer k.mptCommitMu.Unlock()
 	// commit contract storage mpt trie
+	fmt.Println("193--1")
 	k.EvmStateDb.WithContext(ctx).Commit(true)
 
 	// The onleaf func is called _serially_, so we can reuse the same account
 	// for unmarshalling every time.
+	fmt.Printf("193--2")
 	var storageRoot ethcmn.Hash
 	root, _ := k.rootTrie.Commit(func(_ [][]byte, _ []byte, leaf []byte, parent ethcmn.Hash) error {
 		storageRoot.SetBytes(leaf)
@@ -203,6 +206,7 @@ func (k *Keeper) Commit(ctx sdk.Context) {
 
 		return nil
 	})
+	fmt.Printf("193---3")
 	k.SetMptRootHash(uint64(ctx.BlockHeight()), root)
 }
 
