@@ -192,7 +192,6 @@ func (k *Keeper) Commit(ctx sdk.Context) {
 	fmt.Println("193--0", time.Now().String())
 	k.mptCommitMu.Lock()
 	fmt.Println("193---0.5")
-	defer k.mptCommitMu.Unlock()
 	// commit contract storage mpt trie
 	fmt.Println("193--1")
 	k.EvmStateDb.WithContext(ctx).Commit(true)
@@ -211,6 +210,7 @@ func (k *Keeper) Commit(ctx sdk.Context) {
 	})
 	fmt.Println("193---3")
 	k.SetMptRootHash(uint64(ctx.BlockHeight()), root)
+	k.mptCommitMu.Unlock()
 }
 
 func (k *Keeper) AddAsyncTask(height int64) {
