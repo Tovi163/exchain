@@ -190,6 +190,7 @@ func (k *Keeper) PushData2Database(height int64, log log.Logger) {
 
 func (k *Keeper) Commit(ctx sdk.Context) {
 	fmt.Println("193--0", time.Now().String())
+	defer fmt.Println("tuichu-")
 	k.mptCommitMu.Lock()
 	fmt.Println("193---0.5")
 	// commit contract storage mpt trie
