@@ -1,6 +1,7 @@
 package keeper
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/okex/exchain/x/evm/watcher"
@@ -101,6 +102,7 @@ func (k Keeper) EndBlock(ctx sdk.Context, req abci.RequestEndBlock) []abci.Valid
 		k.Watcher.Used()
 	}
 
+	fmt.Println("endBlcok---1")
 	if watcher.IsWatcherEnabled() {
 		params := k.GetParams(ctx)
 		k.Watcher.SaveParams(params)
@@ -108,9 +110,12 @@ func (k Keeper) EndBlock(ctx sdk.Context, req abci.RequestEndBlock) []abci.Valid
 		k.Watcher.SaveBlock(bloom)
 	}
 
+	fmt.Println("endBlock---2")
 	k.UpdateInnerBlockData()
 
+	fmt.Println("endBlock---3")
 	k.Commit(ctx)
+	fmt.Println("endBlock---4")
 
 	return []abci.ValidatorUpdate{}
 }
