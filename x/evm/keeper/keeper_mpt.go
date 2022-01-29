@@ -211,6 +211,7 @@ func (k *Keeper) Commit(ctx sdk.Context) {
 	fmt.Println("193---3")
 	k.SetMptRootHash(uint64(ctx.BlockHeight()), root)
 	k.mptCommitMu.Unlock()
+	fmt.Println("193---", "unlock", time.Now().String())
 }
 
 func (k *Keeper) AddAsyncTask(height int64) {
