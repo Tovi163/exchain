@@ -66,7 +66,7 @@ type Keeper struct {
 	EvmStateDb     *types.CommitStateDB
 	UpdatedAccount []ethcmn.Address
 
-	mptCommitMu sync.Mutex
+	mptCommitMu *sync.Mutex
 	asyncChain  chan int64
 }
 
@@ -110,7 +110,7 @@ func NewKeeper(
 		triegc:         prque.New(nil),
 		stateCache:     fastcache.New(2 * 1024 * 1024 * 1024),
 		UpdatedAccount: make([]ethcmn.Address, 0),
-		mptCommitMu:    sync.Mutex{},
+		mptCommitMu:    &sync.Mutex{},
 		asyncChain:     make(chan int64, 1000),
 	}
 	k.Watcher.SetWatchDataFunc()
