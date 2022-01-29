@@ -815,6 +815,7 @@ func (tree *MutableTree) addOrphans(orphans []*Node) {
 	} else {
 		for _, node := range orphans {
 			if !node.persisted {
+				tree.log(IavlInfo, "discard node , %v", hex.EncodeToString(node.key))
 				// We don't need to orphan nodes that were never persisted.
 				continue
 			}

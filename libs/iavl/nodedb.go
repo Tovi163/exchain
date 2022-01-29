@@ -11,8 +11,8 @@ import (
 
 	"github.com/okex/exchain/libs/iavl/config"
 	"github.com/okex/exchain/libs/tendermint/crypto/tmhash"
-	"github.com/pkg/errors"
 	dbm "github.com/okex/exchain/libs/tm-db"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -140,7 +140,19 @@ func (ndb *nodeDB) GetNode(hash []byte) *Node {
 		panic(fmt.Sprintf("can't get node %X: %v", hash, err))
 	}
 	if buf == nil {
-		panic(fmt.Sprintf("Value missing for hash %x corresponding to nodeKey %x", hash, ndb.nodeKey(hash)))
+		// why: os case ?
+		// maybe:t0: db#set (but not flushed yet) ,t1: store#get was called immediately
+		{
+			buf, err = ndb.dbGet(ndb.nodeKey(hash))
+			if err != nil {
+				panic(fmt.Sprintf("can't get node %X: %v", hash, err))
+			}
+			if buf == nil {
+				panic(fmt.Sprintf("Value missing for hash %x corresponding to nodeKey %x", hash, ndb.nodeKey(hash)))
+			}
+			// error log
+			ndb.log(IavlErr, "root cause,os cache")
+		}
 	}
 
 	node, err := MakeNode(buf)
