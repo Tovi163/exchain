@@ -232,10 +232,12 @@ func (app *BaseApp) CheckTxDev(req abci.RequestCheckTx) abci.ResponseCheckTx {
 func (app *BaseApp) Commit(req abci.RequestCommit) abci.ResponseCommit {
 	header := app.deliverState.ctx.BlockHeader()
 
+	fmt.Println("commit-1")
 	if app.mptCommitHandler != nil {
 		app.mptCommitHandler(app.deliverState.ctx)
 	}
 
+	fmt.Println("commit-2")
 	// Write the DeliverTx state which is cache-wrapped and commit the MultiStore.
 	// The write to the DeliverTx state writes all state transitions to the root
 	// MultiStore (app.cms) so when Commit() is called is persists those values.
@@ -250,6 +252,7 @@ func (app *BaseApp) Commit(req abci.RequestCommit) abci.ResponseCommit {
 			panic("use TreeDeltaMap failed")
 		}
 	}
+	fmt.Println("commit-3")
 
 	commitID, output := app.cms.CommitterCommitMap(input) // CommitterCommitMap
 
@@ -260,6 +263,7 @@ func (app *BaseApp) Commit(req abci.RequestCommit) abci.ResponseCommit {
 	app.cms.ResetCount()
 	app.logger.Debug("Commit synced", "commit", fmt.Sprintf("%X", commitID))
 
+	fmt.Println("commit-4")
 	// Reset the Check state to the latest committed.
 	//
 	// NOTE: This is safe because Tendermint holds a lock on the mempool for
