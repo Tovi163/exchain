@@ -8,7 +8,6 @@ import (
 	"github.com/okex/exchain/libs/tendermint/state"
 	"github.com/okex/exchain/libs/tendermint/types"
 	"github.com/okex/exchain/x/evm/watcher"
-	"github.com/spf13/cobra"
 )
 
 // CheckStart check start command's flags. if user set conflict flags return error.
@@ -92,9 +91,9 @@ var (
 )
 
 // CheckStart check start command.If it has conflict pair above. then return the conflict error
-func CheckStart(cmd *cobra.Command) error {
+func CheckStart() error {
 	for _, v := range startConflictElems {
-		if err := v.checkConflict(cmd); err != nil {
+		if err := v.checkConflict(); err != nil {
 			return err
 		}
 	}

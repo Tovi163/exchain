@@ -75,44 +75,6 @@ func getCommand(flags []universeFlag) *cobra.Command {
 	return cmd
 }
 
-func getCommandUserSet() *cobra.Command {
-	return getCommand([]universeFlag{
-		&boolFlag{
-			Name:    "user-set",
-			Default: false,
-			Changed: true,
-			Value:   true,
-		},
-		&boolFlag{
-			Name:    "user-not-set",
-			Default: false,
-		},
-	})
-}
-
-func Test_checkUserSetFlag(t *testing.T) {
-	type args struct {
-		cmd    *cobra.Command
-		inFlag string
-	}
-	tests := []struct {
-		name string
-		args args
-		want bool
-	}{
-		{name: "1. user set", args: args{cmd: getCommandUserSet(), inFlag: "user-set"}, want: true},
-		{name: "2. user not set", args: args{cmd: getCommandUserSet(), inFlag: "user-not-set"}, want: false},
-		{name: "3. flag not exist", args: args{cmd: getCommandUserSet(), inFlag: "flag-not-exist"}, want: false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := checkUserSetFlag(tt.args.cmd, tt.args.inFlag); got != tt.want {
-				t.Errorf("checkUserSetFlag() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func getCommandBool() *cobra.Command {
 	return getCommand([]universeFlag{
 		&boolFlag{
@@ -195,7 +157,7 @@ func Test_conflictPair_checkConflict(t *testing.T) {
 				configB: tt.fields.configB,
 			}
 			var err error
-			if err = cp.checkConflict(tt.args.cmd); (err != nil) != tt.wantErr {
+			if err = cp.checkConflict(); (err != nil) != tt.wantErr {
 				t.Errorf("checkConflict() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			t.Log(err)

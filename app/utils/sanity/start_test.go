@@ -133,7 +133,7 @@ func TestCheckStart(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var err error
-			if err = CheckStart(tt.args.cmd); (err != nil) != tt.wantErr {
+			if err = CheckStart(); (err != nil) != tt.wantErr {
 				t.Errorf("CheckStart() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			t.Log(err)
@@ -172,7 +172,7 @@ func TestCheckStartArchive(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var err error
-			if err = CheckStart(tt.args.cmd); (err != nil) != tt.wantErr {
+			if err = CheckStart(); (err != nil) != tt.wantErr {
 				t.Errorf("CheckStart() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			t.Log(err)

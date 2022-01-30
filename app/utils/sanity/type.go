@@ -2,7 +2,6 @@ package sanity
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"strings"
 )
@@ -57,23 +56,13 @@ type conflictPair struct {
 	configB item
 }
 
-// checkConflict: check configA vs configB by cmd and viper
-// if both configA and configB is set by user,
+// checkConflict: check configA vs configB
 // and the value is equal to the conflicts value then complain it
-func (cp *conflictPair) checkConflict(cmd *cobra.Command) error {
-	if checkUserSetFlag(cmd, cp.configA.label()) &&
-		checkUserSetFlag(cmd, cp.configB.label()) {
-		if cp.configA.check() &&
-			cp.configB.check() {
-			return fmt.Errorf(" %v conflict with %v", cp.configA.verbose(), cp.configB.verbose())
-		}
+func (cp *conflictPair) checkConflict() error {
+	if cp.configA.check() &&
+		cp.configB.check() {
+		return fmt.Errorf(" %v conflict with %v", cp.configA.verbose(), cp.configB.verbose())
 	}
 
 	return nil
-}
-
-// checkUserSetFlag If the user set the value (or if left to default)
-func checkUserSetFlag(cmd *cobra.Command, inFlag string) bool {
-	flag := cmd.Flags().Lookup(inFlag)
-	return flag != nil && flag.Changed
 }
